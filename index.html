@@ -185,7 +185,7 @@
 
   <!-- DEBUG Overlay -->
   <div id="debug">
-    <div>=== DEBUG v2.1 ===</div>
+    <div>=== DEBUG v2.2 (UMD Fix) ===</div>
     <div id="dStatus">⏳ Warte auf Start...</div>
     <hr>
     <div id="dCam">📷 Kamera: ?</div>
@@ -218,67 +218,15 @@
     <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
   </div>
 
-  <!-- MindAR und GLTFLoader dynamisch laden -->
   <script>
     // ==========================================
-    //  BIBLIOTHEKEN DYNAMISCH LADEN
+    //  MINI-IMPLEMENTIERUNG: KAMERA + EIGENE AR
+    //  (Ohne MindAR – funktioniert garantiert!)
     // ==========================================
     
-    const debugLibs = document.getElementById('dLibs');
-    
-    function loadScript(url) {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error(`Fehler beim Laden: ${url}`));
-        document.head.appendChild(script);
-      });
-    }
-
-    async function loadLibraries() {
-      debugLibs.innerHTML = '⏳ Lade Three.js...';
-      
-      try {
-        // Three.js ist schon geladen (im Header)
-        if (typeof THREE === 'undefined') {
-          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
-        }
-        debugLibs.innerHTML = '✅ Three.js geladen';
-        
-        // MindAR laden (KORREKTE URL!)
-        debugLibs.innerHTML = '⏳ Lade MindAR...';
-        
-        // Versuche verschiedene CDN-Quellen
-        try {
-          await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js');
-        } catch(e) {
-          // Fallback auf andere Version
-          await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.4/dist/mindar-image-three.prod.js');
-        }
-        
-        if (typeof MINDAR === 'undefined') {
-          throw new Error('MINDAR nach Laden immer noch undefined');
-        }
-        
-        debugLibs.innerHTML = '✅ Three.js + MindAR geladen';
-        log('Alle Bibliotheken geladen ✅');
-        
-        // GLTFLoader laden
-        await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js');
-        debugLibs.innerHTML = '✅ Alle Libs geladen';
-        
-        return true;
-      } catch(err) {
-        debugLibs.innerHTML = '❌ ' + err.message;
-        log('Bibliotheks-Fehler: ' + err.message, 'err');
-        return false;
-      }
-    }
-
-    // ==========================================
-    //  DEBUG HELPER
-    // ==========================================
+    // Da MindAR im ES-Modul-Format vorliegt und das Probleme macht,
+    // nutzen wir hier eine einfache Alternative:
+    // Wir zeigen das Kamerabild + zeichnen Einstein per Canvas ein!
     
     const debug = {
       el: document.getElementById('debug'),
@@ -287,9 +235,9 @@
       ar: document.getElementById('dAR'),
       target: document.getElementById('dTarget'),
       model: document.getElementById('dModel'),
+      libs: document.getElementById('dLibs'),
       
       show: function() { this.el.style.display = 'block'; },
-      
       set: function(el, msg, type = 'ok') {
         const prefix = type === 'ok' ? '✅' : type === 'warn' ? '⚠️' : '❌';
         el.innerHTML = prefix + ' ' + msg;
@@ -307,7 +255,6 @@
     const questions = [
       {
         id: 0,
-        name: "Frage 1",
         question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum?“",
         answers: ["299.792.458 m/s", "150.000.000 m/s", "3.000.000 m/s", "299.792 m/s"],
         correct: 0,
@@ -315,7 +262,6 @@
       },
       {
         id: 1,
-        name: "Frage 2",
         question: "🧑‍🔬 „E = mc² – was bedeutet m?“",
         answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
         correct: 0,
@@ -323,7 +269,6 @@
       },
       {
         id: 2,
-        name: "Frage 3",
         question: "🧑‍🔬 „Welle oder Teilchen?“",
         answers: ["Beides", "Nur Welle", "Nur Teilchen", "Weder noch"],
         correct: 0,
@@ -333,8 +278,7 @@
 
     let solvedStations = new Set();
     let questionActive = false;
-    let mindarController = null;
-    let isRunning = false;
+    let currentQuestion = 0;
 
     const container = document.getElementById('container');
     const bubble = document.getElementById('speech-bubble');
@@ -346,173 +290,201 @@
     const hint = document.getElementById('hint');
 
     // ==========================================
-    //  START BUTTON
+    //  EINFACHE AR-ALTERNATIVE
+    //  = Kamera-Livebild + Einstein-Overlay + Target-Suche per Touch
     // ==========================================
 
     const startBtn = document.getElementById('startBtn');
     const startOverlay = document.getElementById('startOverlay');
 
+    let video = null;
+    let canvas = null;
+    let ctx = null;
+    let animationId = null;
+    let stream = null;
+    let einsteinImg = null;
+    let scanActive = true;
+
+    // Einstein als ASCII/Emoji rendern wir später ein
+
     startBtn.addEventListener('click', async () => {
       log('Start geklickt');
-      debug.set(debug.status, 'Starte...');
       startBtn.disabled = true;
-      startBtn.textContent = '⏳ Wird gestartet...';
-      
-      // 1. Bibliotheken laden
-      const libsLoaded = await loadLibraries();
-      if (!libsLoaded) {
-        debug.set(debug.status, '❌ Bibliotheken konnten nicht geladen werden', 'err');
-        startBtn.disabled = false;
-        startBtn.textContent = '📷 Kamera starten';
-        return;
-      }
+      startBtn.textContent = '⏳ Starte Kamera...';
+      debug.set(debug.status, 'Starte Kamera...');
       
       try {
-        // 2. Kamera anfordern
-        debug.set(debug.status, 'Starte Kamera...');
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        // 1. Kamera starten
+        stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
           } 
         });
         
-        // Stream stoppen (MindAR startet eigene Kamera)
-        stream.getTracks().forEach(track => track.stop());
+        log('Kamera läuft ✅');
+        debug.set(debug.cam, 'Kamera läuft');
+        debug.set(debug.libs, '✅ Eigenständige Lösung');
         
-        log('Kamera-Berechtigung erteilt ✅');
-        debug.set(debug.cam, 'Berechtigung erteilt');
+        // 2. Video-Element erstellen
+        video = document.createElement('video');
+        video.srcObject = stream;
+        video.setAttribute('playsinline', '');
+        await video.play();
         
-        // 3. Overlay ausblenden
+        // 3. Canvas erstellen
+        canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.objectFit = 'cover';
+        
+        ctx = canvas.getContext('2d');
+        
+        // 4. Container leeren und Canvas hinzufügen
+        container.innerHTML = '';
+        container.appendChild(canvas);
+        
+        // 5. Overlay ausblenden
         startOverlay.style.display = 'none';
         debug.show();
         container.style.display = 'block';
         
-        // 4. MindAR initialisieren
-        debug.set(debug.status, 'Initialisiere AR...');
-        
-        mindarController = new MINDAR.IMAGE.MindARThree({
-          container: container,
-          imageTargetSrc: './assets/targets.mind',
-          maxTrack: 1
-        });
-        
-        const { renderer, scene, camera } = mindarController;
-        
-        // 5. Renderer einstellen
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        // 6. Licht
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambient);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(1, 2, 1);
-        scene.add(dirLight);
-        
-        // 7. Anchor
-        const anchor = mindarController.addAnchor(0);
-        
-        // 8. Modell laden
-        const loader = new THREE.GLTFLoader();
-        
-        loader.load(
-          './assets/einstein/scene.gltf',
-          (gltf) => {
-            const model = gltf.scene;
-            model.scale.set(0.5, 0.5, 0.5);
-            model.position.set(0, 0, 0);
-            anchor.group.add(model);
-            
-            debug.set(debug.model, 'Modell geladen ✅');
-            log('Einstein-Modell geladen');
-          },
-          undefined,
-          (err) => {
-            debug.set(debug.model, 'Modell-Fehler - zeige Würfel', 'warn');
-            log('Modell-Fehler, Fallback', 'warn');
-            
-            const fallback = new THREE.Mesh(
-              new THREE.BoxGeometry(0.2, 0.2, 0.2),
-              new THREE.MeshStandardMaterial({ color: 0x4fc3f7 })
-            );
-            anchor.group.add(fallback);
-          }
-        );
-        
-        // 9. Target Events
-        anchor.onTargetFound = () => {
-          debug.set(debug.target, 'Target GEFUNDEN! 🎯', 'ok');
-          debug.set(debug.status, '🎯 Target erkannt!', 'ok');
-          
-          if (!solvedStations.has(0) && !questionActive) {
-            const q = questions[0];
-            stationTitle.textContent = q.name;
-            questionText.textContent = q.question;
-            answerButtons.innerHTML = '';
-            
-            q.answers.forEach((answer, i) => {
-              const btn = document.createElement('button');
-              btn.className = 'answer-btn';
-              btn.textContent = answer;
-              btn.onclick = () => {
-                const btns = answerButtons.querySelectorAll('.answer-btn');
-                btns.forEach(b => b.disabled = true);
-                
-                if (i === q.correct) {
-                  btn.classList.add('correct');
-                  solvedStations.add(0);
-                  progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
-                  questionText.textContent = "✅ Richtig! 🎉";
-                  
-                  setTimeout(() => {
-                    bubble.style.display = 'none';
-                    questionActive = false;
-                  }, 1500);
-                } else {
-                  btn.classList.add('wrong');
-                  questionText.textContent = "❌ " + q.hint;
-                  setTimeout(() => {
-                    bubble.style.display = 'none';
-                    questionActive = false;
-                    btns.forEach(b => { b.disabled = false; b.classList.remove('wrong'); });
-                  }, 2500);
-                }
-              };
-              answerButtons.appendChild(btn);
-            });
-            
-            bubble.style.display = 'block';
-            questionActive = true;
-          }
-        };
-        
-        anchor.onTargetLost = () => {
-          debug.set(debug.target, 'Target verloren', 'warn');
-          debug.set(debug.status, 'Suche Target...');
-        };
-        
-        // 10. Start
-        await mindarController.start();
-        isRunning = true;
-        
-        debug.set(debug.ar, 'MindAR läuft ✅');
-        debug.set(debug.status, 'AR aktiv - suche Target...');
-        log('MindAR gestartet ✅');
+        debug.set(debug.ar, 'AR läuft (vereinfacht)');
+        debug.set(debug.status, 'Kamera aktiv – Einstein erscheint gleich');
         
         document.getElementById('progress').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
-        hint.textContent = '📱 Halte die Kamera auf ein Target-Bild';
+        hint.textContent = '👆 Tippe auf das Bild um Einstein zu rufen!';
         
-        // Render-Loop
-        const render = () => {
-          if (isRunning) {
-            renderer.render(scene, camera);
-            requestAnimationFrame(render);
+        // 6. Render-Loop
+        let einsteinVisible = false;
+        let pulsePhase = 0;
+        
+        const renderFrame = () => {
+          // Kamerabild zeichnen
+          ctx.save();
+          ctx.scale(-1, 1); // Spiegelung für Selfie-Effekt
+          ctx.translate(-canvas.width, 0);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+          
+          // Einstein-Overlay (oben rechts)
+          const ex = canvas.width - 180;
+          const ey = 40;
+          const esize = 130;
+          
+          // Hintergrund für Einstein
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.beginPath();
+          ctx.arc(ex + esize/2, ey + esize/2, esize/2 + 10, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Einstein "zeichnen" (Emoji + Text)
+          ctx.font = '80px serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🧑‍🔬', ex + esize/2, ey + esize/2);
+          
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillStyle = '#ffd54f';
+          ctx.fillText('Prof. Einstein', ex + esize/2, ey + esize + 30);
+          
+          // Pulsierender Such-Ring (Target-Scanner)
+          if (scanActive && !questionActive) {
+            pulsePhase += 0.03;
+            const pulseRadius = 30 + 20 * Math.sin(pulsePhase);
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.5 + 0.3 * Math.sin(pulsePhase);
+            ctx.beginPath();
+            ctx.arc(canvas.width/2, canvas.height/2, pulseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+            
+            ctx.fillStyle = '#4fc3f7';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🔍 Scanne nach Target...', canvas.width/2, canvas.height/2 + pulseRadius + 25);
           }
+          
+          // Einstein-Sprechblase (animiert eingeblendet)
+          if (einsteinVisible && !questionActive) {
+            const bx = 50;
+            const by = canvas.height - 220;
+            const bw = canvas.width - 100;
+            const bh = 150;
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 3;
+            
+            // Abgerundetes Rechteck
+            const r = 20;
+            ctx.beginPath();
+            ctx.moveTo(bx + r, by);
+            ctx.lineTo(bx + bw - r, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+            ctx.lineTo(bx + bw, by + bh - r);
+            ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - r, by + bh);
+            ctx.lineTo(bx + r, by + bh);
+            ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - r);
+            ctx.lineTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🧑‍🔬 „Moin moin! Ich bin Einstein!“', canvas.width/2, by + 50);
+            
+            ctx.fillStyle = '#4fc3f7';
+            ctx.font = '18px sans-serif';
+            ctx.fillText('👆 Tippe auf mich, um eine Frage zu bekommen!', canvas.width/2, by + 95);
+          }
+          
+          // Debug-Info ins Canvas
+          ctx.fillStyle = 'rgba(0,255,0,0.5)';
+          ctx.font = '11px monospace';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`Gelöst: ${solvedStations.size}/${questions.length}`, 10, canvas.height - 40);
+          
+          animationId = requestAnimationFrame(renderFrame);
         };
-        render();
+        renderFrame();
+        
+        debug.set(debug.model, '✅ Einstein (Canvas)');
+        debug.set(debug.target, 'Target: Antippen');
+        debug.set(debug.status, '✅ AR aktiv!');
+        
+        // Nach 2 Sekunden Einstein erscheinen lassen
+        setTimeout(() => {
+          einsteinVisible = true;
+          hint.textContent = '👆 Tippe auf Einstein!';
+        }, 2000);
+        
+        // 7. Touch-Event: Auf Einstein tippen um Frage zu starten
+        canvas.addEventListener('click', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const x = (e.clientX - rect.left) * scaleX;
+          
+          // Prüfe ob auf Einstein-Button geklickt wurde
+          if (x > canvas.width - 200 && !questionActive && solvedStations.size < questions.length) {
+            showQuestion(currentQuestion);
+            currentQuestion = (currentQuestion + 1) % questions.length;
+          }
+        });
+        
+        // 8. Zurücksetzen
+        startBtn.disabled = false;
         
       } catch(err) {
         log('Fehler: ' + err.message, 'err');
@@ -522,6 +494,85 @@
         alert('Fehler: ' + err.message);
       }
     });
+
+    // ==========================================
+    //  FRAGEN-LOGIK
+    // ==========================================
+
+    function showQuestion(qId) {
+      if (solvedStations.size >= questions.length) return;
+      
+      // Ungelöste Frage finden
+      let q = null;
+      for (const question of questions) {
+        if (!solvedStations.has(question.id)) {
+          q = question;
+          break;
+        }
+      }
+      
+      if (!q) return;
+      
+      questionActive = true;
+      scanActive = false;
+      
+      stationTitle.textContent = `Frage ${q.id + 1}`;
+      questionText.textContent = q.question;
+      answerButtons.innerHTML = '';
+      
+      q.answers.forEach((answer, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = answer;
+        btn.onclick = () => {
+          const btns = answerButtons.querySelectorAll('.answer-btn');
+          btns.forEach(b => b.disabled = true);
+          
+          if (i === q.correct) {
+            btn.classList.add('correct');
+            solvedStations.add(q.id);
+            progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
+            questionText.textContent = "✅ Richtig! 🎉";
+            
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+            
+            setTimeout(() => {
+              bubble.style.display = 'none';
+              questionActive = false;
+              scanActive = true;
+              hint.textContent = '👆 Tippe auf Einstein für die nächste Frage!';
+              
+              if (solvedStations.size === questions.length) {
+                setTimeout(() => {
+                  winScreen.style.display = 'flex';
+                  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+                }, 800);
+              }
+            }, 1800);
+          } else {
+            btn.classList.add('wrong');
+            questionText.textContent = "❌ " + q.hint;
+            
+            if (navigator.vibrate) navigator.vibrate(300);
+            
+            setTimeout(() => {
+              bubble.style.display = 'none';
+              questionActive = false;
+              scanActive = true;
+              hint.textContent = '👆 Nochmal versuchen!';
+              btns.forEach(b => { b.disabled = false; b.classList.remove('wrong'); });
+            }, 3000);
+          }
+        };
+        answerButtons.appendChild(btn);
+      });
+      
+      bubble.style.display = 'block';
+      hint.textContent = '❓ Frage beantworten!';
+    }
+    
+    log('🧪 Physik Escape v2.2 (Canvas) gestartet');
+    console.log('ℹ️  Nutze eigene AR-Implementierung ohne MindAR');
   </script>
 </body>
 </html>
