@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🧪 Physik Escape mit Einstein (Debug)</title>
+  <title>🧪 Physik Escape mit Einstein</title>
   
   <!-- MindAR Bibliothek -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
@@ -15,9 +15,41 @@
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
     
-    /* DEBUG OVERLAY - zeigt Status an */
+    /* Overlay für Kamera-Start */
+    #startOverlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #1a1a2e;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: white;
+    }
+    #startOverlay h1 { font-size: 2em; color: #ffd54f; margin-bottom: 10px; }
+    #startOverlay p { font-size: 1.1em; color: #ccc; max-width: 300px; margin: 5px 0; }
+    #startOverlay .icon { font-size: 4em; margin: 15px; }
+    #startBtn {
+      background: #4fc3f7;
+      color: #000;
+      border: none;
+      padding: 18px 50px;
+      border-radius: 50px;
+      font-size: 1.3em;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 25px;
+      transition: transform 0.2s;
+    }
+    #startBtn:hover { transform: scale(1.05); }
+    #startBtn:active { transform: scale(0.95); }
+    #startOverlay small { color: #666; margin-top: 20px; font-size: 0.8em; }
+    
+    /* DEBUG Overlay */
     #debug {
       position: fixed;
       top: 10px;
@@ -25,31 +57,18 @@
       z-index: 9999;
       background: rgba(0,0,0,0.85);
       color: #0f0;
-      padding: 12px 18px;
+      padding: 10px 16px;
       border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.6;
-      max-width: 400px;
+      font-size: 12px;
+      line-height: 1.5;
+      max-width: 380px;
       border: 1px solid #0f0;
       pointer-events: none;
+      display: none;
     }
     #debug .warn { color: #ff0; }
     #debug .err { color: #f44; }
     #debug .ok { color: #0f0; }
-    
-    /* Ladebildschirm */
-    #loading {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: #1a1a2e; color: white; z-index: 9998;
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center; text-align: center;
-    }
-    #loading .spinner {
-      width: 50px; height: 50px; border: 5px solid #333;
-      border-top: 5px solid #4fc3f7; border-radius: 50%;
-      animation: spin 1s linear infinite; margin: 20px;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     
     #speech-bubble {
       position: fixed; top: 50%; left: 50%;
@@ -69,7 +88,6 @@
       font-size: 0.95em; cursor: pointer; font-weight: bold;
       min-width: 100px;
     }
-    .answer-btn:hover { background: #29b6f6; }
     .answer-btn.correct { background: #66bb6a; }
     .answer-btn.wrong { background: #ef5350; }
     .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; }
@@ -79,6 +97,7 @@
       background: rgba(0,0,0,0.8); color: white;
       padding: 8px 20px; border-radius: 30px;
       font-size: 0.9em; z-index: 50;
+      display: none;
     }
     
     #hint {
@@ -88,6 +107,7 @@
       z-index: 30; background: rgba(0,0,0,0.7);
       padding: 6px 16px; border-radius: 20px;
       text-align: center;
+      display: none;
     }
     
     .win-screen {
@@ -109,38 +129,43 @@
 </head>
 <body>
 
-  <!-- Ladebildschirm -->
-  <div id="loading">
-    <h2>🧪 Physik Escape mit Einstein</h2>
-    <div class="spinner"></div>
-    <p id="loadingText">Lade AR-Szene...</p>
+  <!-- START-OVERLAY (Benutzer muss klicken!) -->
+  <div id="startOverlay">
+    <div class="icon">🧪</div>
+    <h1>Physik Escape<br>mit Einstein</h1>
+    <p>Scanne versteckte Bilder im Schulhaus<br>und löse Physik-Fragen!</p>
+    <p style="font-size: 0.85em; color: #888;">🔍 AR-Bilderkennung</p>
+    <button id="startBtn">📷 Kamera starten</button>
+    <small>Kamera-Zugriff wird benötigt</small>
   </div>
 
-  <!-- DEBUG OVERLAY -->
+  <!-- DEBUG Overlay (wird nach Klick eingeblendet) -->
   <div id="debug">
     <div>=== DEBUG ===</div>
+    <div id="dVersion">v1.1 (Fix Kamera-Start)</div>
+    <hr style="border-color:#333;">
     <div id="dStatus">⏳ Warte auf Start...</div>
-    <div id="dAR">📡 AR: ?</div>
     <div id="dCam">📷 Kamera: ?</div>
+    <div id="dAR">📡 AR: ?</div>
     <div id="dTarget">🎯 Target: ?</div>
     <div id="dModel">🧑‍🔬 Modell: ?</div>
-    <div id="dVersion">v1.0 (Debug)</div>
   </div>
 
-  <!-- AR Szene -->
+  <!-- AR Szene (zuerst versteckt) -->
   <a-scene 
-    mindar-image="imageTargetSources: ./assets/targets.mind;" 
+    id="arScene"
+    mindar-image="imageTargetSources: ./assets/targets.mind; autoStart: false;" 
     embedded 
     color-space="sRGB" 
     renderer="colorManagement: true"
     vr-mode-ui="enabled: false"
     loading-screen="enabled: false"
+    style="display: none;"
   >
     
     <!-- STATION: EINSTEIN -->
     <a-entity mindar-image-target="targetIndex: 0">
       
-      <!-- 3D Einstein Modell -->
       <a-entity 
         id="einsteinModel"
         gltf-model="url(./assets/einstein/scene.gltf)" 
@@ -150,10 +175,8 @@
       >
       </a-entity>
       
-      <!-- Leuchteffekt -->
       <a-circle position="0 -0.15 0" radius="0.4" color="#4fc3f7" opacity="0.2" rotation="-90 0 0"></a-circle>
 
-      <!-- Name -->
       <a-text 
         value="🧑‍🔬 Prof. Einstein" 
         position="0 -0.6 0" 
@@ -186,15 +209,18 @@
 
   <script>
     // ==========================================
-    //  DEBUG & STATUS
+    //  DEBUG HELPER
     // ==========================================
     
     const debug = {
+      el: document.getElementById('debug'),
       status: document.getElementById('dStatus'),
-      ar: document.getElementById('dAR'),
       cam: document.getElementById('dCam'),
+      ar: document.getElementById('dAR'),
       target: document.getElementById('dTarget'),
       model: document.getElementById('dModel'),
+      
+      show: function() { this.el.style.display = 'block'; },
       
       set: function(el, msg, type = 'ok') {
         const prefix = type === 'ok' ? '✅' : type === 'warn' ? '⚠️' : '❌';
@@ -207,49 +233,79 @@
     }
 
     // ==========================================
-    //  LADEPHASEN
+    //  KAMERA-START PER BUTTON (DER FIX!)
     // ==========================================
 
-    // 1. Seite geladen
-    document.addEventListener('DOMContentLoaded', () => {
-      debug.set(debug.status, 'Seite geladen, starte AR...');
-      log('DOM geladen');
-    });
-
-    // 2. A-Frame Szene geladen
-    const scene = document.querySelector('a-scene');
-    scene.addEventListener('loaded', () => {
-      debug.set(debug.status, 'A-Frame Szene geladen ✅');
-      debug.set(debug.ar, 'Szene bereit');
-      log('A-Frame Szene geladen');
+    const startOverlay = document.getElementById('startOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const arScene = document.getElementById('arScene');
+    
+    startBtn.addEventListener('click', async () => {
+      log('Benutzer hat geklickt – starte Kamera...');
+      debug.set(debug.status, 'Starte Kamera...');
       
-      setTimeout(() => {
-        document.getElementById('loading').style.display = 'none';
-      }, 800);
+      try {
+        // 1. Kamera-Berechtigung explizit anfordern (USER GESTURE!)
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        
+        // Stream stoppen (MindAR startet eigene Kamera)
+        stream.getTracks().forEach(track => track.stop());
+        
+        log('Kamera-Berechtigung erteilt ✅');
+        debug.set(debug.cam, 'Berechtigung erteilt');
+        
+        // 2. Start-Overlay ausblenden
+        startOverlay.style.display = 'none';
+        
+        // 3. Debug einblenden
+        debug.show();
+        
+        // 4. A-Frame Szene anzeigen
+        arScene.style.display = 'block';
+        
+        // 5. MindAR manuell starten
+        const mindar = arScene.components['mindar-image'];
+        if (mindar && mindar.start) {
+          await mindar.start();
+          debug.set(debug.ar, 'MindAR gestartet ✅');
+          debug.set(debug.status, 'AR läuft – suche Target...');
+          log('MindAR gestartet');
+        }
+        
+        // 6. UI einblenden
+        document.getElementById('progress').style.display = 'block';
+        document.getElementById('hint').style.display = 'block';
+        
+      } catch (err) {
+        log('Kamera-Fehler: ' + err.message, 'err');
+        debug.set(debug.cam, 'Fehler: ' + err.message, 'err');
+        debug.set(debug.status, '❌ Kamera-Fehler!', 'err');
+        alert('Kamera-Zugriff fehlgeschlagen!\n\nBitte erlaube den Kamera-Zugriff in den Browser-Einstellungen und lade die Seite neu.\n\nFehler: ' + err.message);
+      }
     });
 
-    // 3. Kamera-Status prüfen
-    scene.addEventListener('camera-ready', () => {
-      debug.set(debug.cam, 'Kamera aktiv');
-      log('Kamera bereit');
+    // ==========================================
+    //  A-FRAME EVENTS
+    // ==========================================
+
+    arScene.addEventListener('loaded', () => {
+      log('A-Frame Szene geladen');
+      debug.set(debug.ar, 'Szene geladen (warte auf Start)');
     });
 
-    // 4. MindAR spezifische Events
-    scene.addEventListener('mindar-image-ready', () => {
-      debug.set(debug.ar, 'MindAR bereit');
-      debug.set(debug.status, 'AR bereit – suche Target...');
-      log('MindAR Bilderkennung bereit');
-    });
+    // ==========================================
+    //  MODELL-EVENTS
+    // ==========================================
 
-    // 5. Modell geladen
     document.querySelector('#einsteinModel').addEventListener('model-loaded', () => {
       debug.set(debug.model, '3D-Modell geladen ✅');
       log('Einstein-Modell geladen');
     });
 
-    document.querySelector('#einsteinModel').addEventListener('model-error', (err) => {
+    document.querySelector('#einsteinModel').addEventListener('model-error', () => {
       debug.set(debug.model, 'Modell-Fehler!', 'err');
-      log('Modell-Fehler: ' + JSON.stringify(err), 'err');
     });
 
     // ==========================================
@@ -266,21 +322,11 @@
       entity.addEventListener('targetLost', () => {
         debug.set(debug.target, `Target ${idx} verloren`, 'warn');
         debug.set(debug.status, 'Suche Target...');
-        log(`Target ${idx} verloren`, 'warn');
       });
     });
 
-    // Fallback: Prüfe ob MindAR überhaupt startet
-    setTimeout(() => {
-      const camStatus = document.getElementById('dCam').innerHTML;
-      if (camStatus.includes('?')) {
-        debug.set(debug.cam, 'Kamera? ggf. Berechtigung fehlt', 'err');
-        debug.set(debug.status, '❌ Kamera-Zugriff prüfen!', 'err');
-      }
-    }, 5000);
-
     // ==========================================
-    //  SPIEL-LOGIK
+    //  FRAGEN-LOGIK
     // ==========================================
 
     const questions = [
@@ -288,22 +334,19 @@
         id: 0, name: "Frage 1",
         question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum?“",
         answers: ["299.792.458 m/s", "150.000.000 m/s", "3.000.000 m/s", "299.792 m/s"],
-        correct: 0,
-        hint: "💡 Ca. 300 Millionen m/s!"
+        correct: 0, hint: "💡 Ca. 300 Millionen m/s!"
       },
       {
         id: 1, name: "Frage 2",
         question: "🧑‍🔬 „E = mc² – was bedeutet m?“",
         answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
-        correct: 0,
-        hint: "💡 Die Masse wird zu Energie!"
+        correct: 0, hint: "💡 Die Masse wird zu Energie!"
       },
       {
         id: 2, name: "Frage 3",
         question: "🧑‍🔬 „Welle oder Teilchen?“",
         answers: ["Beides", "Nur Welle", "Nur Teilchen", "Weder noch"],
-        correct: 0,
-        hint: "💡 Welle-Teilchen-Dualismus!"
+        correct: 0, hint: "💡 Welle-Teilchen-Dualismus!"
       }
     ];
 
@@ -367,9 +410,7 @@
       });
     });
 
-    log('🧪 Debug-Version gestartet!');
-    log('📁 targets.mind in ./assets/targets.mind');
-    log('📁 Modell in ./assets/einstein/scene.gltf');
+    log('🧪 Debug v1.1 geladen – warte auf Klick');
   </script>
 </body>
 </html>
