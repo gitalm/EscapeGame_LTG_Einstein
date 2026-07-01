@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>🧪 Physik Escape mit Einstein</title>
   
   <!-- MindAR Bibliothek -->
@@ -11,158 +11,156 @@
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <!-- MindAR A-Frame Plugin -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <!-- A-Frame GLTF Loader für 3D-Modelle -->
+  <!-- A-Frame GLTF Loader -->
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
     
-    /* Einstein-Sprachblase */
+    #loading {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1a1a2e; color: white; z-index: 999;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+    }
+    #loading .spinner {
+      width: 50px; height: 50px; border: 5px solid #333;
+      border-top: 5px solid #4fc3f7; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 20px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
     #speech-bubble {
-      position: fixed;
-      top: 50%;
-      left: 50%;
+      position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.88);
-      color: white;
-      padding: 30px 40px;
-      border-radius: 20px;
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-      z-index: 100;
-      display: none;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      background: rgba(0, 0, 0, 0.9); color: white;
+      padding: 25px 35px; border-radius: 20px;
+      max-width: 420px; width: 88%; text-align: center;
+      z-index: 100; display: none;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
       border: 2px solid #4fc3f7;
+      backdrop-filter: blur(5px);
     }
     #speech-bubble h2 {
-      margin: 0 0 5px 0;
-      color: #ffd54f;
-      font-size: 1.4em;
+      margin: 0 0 5px 0; color: #ffd54f; font-size: 1.3em;
     }
-    #speech-bubble .einstein-icon {
-      font-size: 2em;
-    }
+    #speech-bubble .einstein-icon { font-size: 2.5em; }
     #speech-bubble p {
-      font-size: 1.15em;
-      margin: 10px 0 18px 0;
-      line-height: 1.4;
+      font-size: 1.1em; margin: 10px 0 18px 0; line-height: 1.4;
     }
     .answer-btn {
-      background: #4fc3f7;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      margin: 6px;
-      border-radius: 12px;
-      font-size: 1em;
-      cursor: pointer;
-      font-weight: bold;
-      min-width: 120px;
-      transition: all 0.2s;
+      background: #4fc3f7; color: #000; border: none;
+      padding: 10px 20px; margin: 5px; border-radius: 10px;
+      font-size: 0.95em; cursor: pointer; font-weight: bold;
+      min-width: 100px; transition: all 0.2s;
     }
     .answer-btn:hover { background: #29b6f6; transform: scale(1.03); }
     .answer-btn.correct { background: #66bb6a; }
     .answer-btn.wrong { background: #ef5350; }
+    .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; }
     
     #progress {
-      position: fixed;
-      top: 15px;
-      left: 50%;
+      position: fixed; top: 15px; left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.75);
-      color: white;
-      padding: 8px 20px;
-      border-radius: 30px;
-      font-size: 0.95em;
-      z-index: 50;
-      backdrop-filter: blur(5px);
-    }
-    
-    .win-screen {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 200;
-      color: white;
-      text-align: center;
-    }
-    .win-screen h1 { font-size: 3em; color: #ffd54f; margin: 0; }
-    .win-screen .sub { font-size: 1.3em; color: #4fc3f7; }
-    .win-screen p { font-size: 1em; color: #aaa; max-width: 500px; }
-    .restart-btn {
-      background: #4fc3f7; color: black;
-      border: none; padding: 15px 40px;
-      border-radius: 30px; font-size: 1.2em;
-      cursor: pointer; font-weight: bold; margin-top: 20px;
+      background: rgba(0,0,0,0.8); color: white;
+      padding: 8px 20px; border-radius: 30px;
+      font-size: 0.9em; z-index: 50;
+      backdrop-filter: blur(5px); white-space: nowrap;
     }
     
     #hint {
       position: fixed; bottom: 15px; left: 50%;
       transform: translateX(-50%);
-      color: rgba(255,255,255,0.6);
-      font-size: 0.85em; z-index: 30;
-      background: rgba(0,0,0,0.5);
-      padding: 5px 15px; border-radius: 20px;
+      color: rgba(255,255,255,0.7); font-size: 0.85em;
+      z-index: 30; background: rgba(0,0,0,0.6);
+      padding: 6px 16px; border-radius: 20px;
+      backdrop-filter: blur(3px); text-align: center;
+    }
+    
+    .win-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.93); display: none;
+      justify-content: center; align-items: center;
+      flex-direction: column; z-index: 200; color: white;
+      text-align: center; padding: 20px;
+      box-sizing: border-box;
+    }
+    .win-screen h1 { font-size: 2.8em; color: #ffd54f; margin: 0; }
+    .win-screen .sub { font-size: 1.2em; color: #4fc3f7; margin: 10px; }
+    .win-screen p { font-size: 1em; color: #aaa; max-width: 500px; }
+    .restart-btn {
+      background: #4fc3f7; color: black; border: none;
+      padding: 14px 40px; border-radius: 30px;
+      font-size: 1.2em; cursor: pointer; font-weight: bold;
+      margin-top: 25px;
     }
   </style>
 </head>
 <body>
 
+  <!-- Ladebildschirm -->
+  <div id="loading">
+    <h2>🧪 Physik Escape mit Einstein</h2>
+    <div class="spinner"></div>
+    <p>Lade AR-Szene...</p>
+    <small style="color: #888;">Bitte Kamera-Zugriff erlauben</small>
+  </div>
+
   <!-- AR Szene -->
-  <a-scene mindar-image="imageTargetSources: ./targets.mind;" embedded color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false">
+  <a-scene 
+    mindar-image="imageTargetSources: ./assets/targets.mind;" 
+    embedded 
+    color-space="sRGB" 
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    loading-screen="enabled: false"
+  >
     
-    <!-- ===== STATION: EINSTEIN-TARGET ===== -->
+    <!-- ===== STATION: EINSTEIN ===== -->
     <a-entity mindar-image-target="targetIndex: 0">
-      <!-- 3D Einstein Würfel (Platzhalter für ein richtiges Einstein-Modell) -->
-      <a-entity position="0 0.15 0" scale="0.15 0.15 0.15">
-        <!-- Körper -->
-        <a-box position="0 0.5 0" width="1" height="1" depth="0.8" color="#8B4513"></a-box>
-        <!-- Kopf -->
-        <a-sphere position="0 1.1 0" radius="0.45" color="#FFE4C4"></a-sphere>
-        <!-- Haare (Einstein!) -->
-        <a-sphere position="-0.25 1.4 0.2" radius="0.2" color="#DDDDDD"></a-sphere>
-        <a-sphere position="0.25 1.4 0.2" radius="0.2" color="#DDDDDD"></a-sphere>
-        <a-sphere position="-0.35 1.25 0.15" radius="0.18" color="#DDDDDD"></a-sphere>
-        <a-sphere position="0.35 1.25 0.15" radius="0.18" color="#DDDDDD"></a-sphere>
-        <a-sphere position="0 1.45 0.1" radius="0.18" color="#DDDDDD"></a-sphere>
-        <!-- Augen -->
-        <a-sphere position="-0.15 1.1 0.4" radius="0.08" color="#000000"></a-sphere>
-        <a-sphere position="0.15 1.1 0.4" radius="0.08" color="#000000"></a-sphere>
-        <!-- Schnurrbart -->
-        <a-torus position="-0.17 0.95 0.4" radius="0.12" radius-tubular="0.03" color="#666666" rotation="0 0 20"></a-torus>
-        <a-torus position="0.17 0.95 0.4" radius="0.12" radius-tubular="0.03" color="#666666" rotation="0 0 -20"></a-torus>
-        <!-- Fragezeichen über dem Kopf -->
-        <a-text value="?" position="0 1.8 0" color="#ffd54f" align="center" width="3" font-size="30"></a-text>
+      
+      <!-- 3D Einstein Modell aus assets/ -->
+      <a-entity 
+        gltf-model="url(./assets/einstein/scene.gltf)" 
+        position="0 0 0" 
+        scale="0.8 0.8 0.8"
+        animation="property: position; to: 0 0.02 0; dur: 2000; dir: alternate; loop: true"
+      >
       </a-entity>
       
-      <!-- Namenstext -->
-      <a-text value="👨‍🔬 Prof. Einstein" position="0 -0.5 0" color="#ffd54f" align="center" width="5"
-              font-size="12" side="double"></a-text>
+      <!-- Leuchteffekt unter Einstein -->
+      <a-circle position="0 -0.15 0" radius="0.4" color="#4fc3f7" opacity="0.15" rotation="-90 0 0"></a-circle>
+
+      <!-- Name -->
+      <a-text 
+        value="👨‍🔬 Prof. Einstein" 
+        position="0 -0.6 0" 
+        color="#ffd54f" 
+        align="center" 
+        width="4"
+        font-size="8"
+        side="double"
+      ></a-text>
     </a-entity>
 
     <a-camera position="0 0 0"></a-camera>
   </a-scene>
 
   <!-- UI -->
-  <div id="progress">🧪 Physik Escape mit Einstein • 0 / 3 ✅</div>
+  <div id="progress">🧪 Einstein Escape • 0 / 3 ✅</div>
   <div id="hint">📱 Scanne das Target-Bild mit deiner Kamera!</div>
 
   <div id="speech-bubble">
     <div class="einstein-icon">🧑‍🔬</div>
     <h2 id="stationTitle">Professor Einstein</h2>
-    <p id="questionText">Moin moin, ich bin Einstein! Beantworte meine Physik-Fragen um zu entkommen!</p>
+    <p id="questionText">„Moin moin! Beantworte meine Fragen, um zu entkommen!“</p>
     <div id="answerButtons"></div>
   </div>
 
   <div class="win-screen" id="winScreen">
     <h1>🧪 ESCAPE! 🎉</h1>
-    <div class="sub">"Phantasie ist wichtiger als Wissen!"</div>
-    <p>- Albert Einstein</p>
+    <div class="sub">„Phantasie ist wichtiger als Wissen!“</div>
+    <p>– Albert Einstein</p>
     <p style="margin-top: 20px;">Du hast alle 3 Fragen richtig beantwortet<br>und bist aus dem Physik-Labor entkommen!</p>
     <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
   </div>
@@ -184,7 +182,7 @@
       {
         id: 1,
         name: "Frage 2: Relativität",
-        question: "🧑‍🔬 „E = mc² – aber was bedeutet das m?“",
+        question: "🧑‍🔬 „E = mc² – aber was bedeutet das kleine m?“",
         answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
         correct: 0,
         hint: "💡 Die Masse eines Objekts – sie wird zu Energie!"
@@ -192,7 +190,7 @@
       {
         id: 2,
         name: "Frage 3: Quantenphysik",
-        question: "🧑‍🔬 „Ist das Licht nun Welle oder Teilchen? Was denkst du?“",
+        question: "🧑‍🔬 „Ist Licht nun Welle oder Teilchen? Was denkst du?“",
         answers: ["Beides - Welle-Teilchen-Dualismus", "Nur Welle", "Nur Teilchen", "Weder noch"],
         correct: 0,
         hint: "💡 Ein bisschen von beidem – das macht die Quantenphysik aus!"
@@ -210,6 +208,14 @@
     const progress = document.getElementById('progress');
     const winScreen = document.getElementById('winScreen');
     const hint = document.getElementById('hint');
+    const loading = document.getElementById('loading');
+
+    // Loading-Screen ausblenden wenn AR bereit
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+      setTimeout(() => {
+        loading.style.display = 'none';
+      }, 500);
+    });
 
     function onStationFound(stationId) {
       if (solvedStations.has(stationId) || questionActive) return;
@@ -272,7 +278,7 @@
     }
 
     function updateProgress() {
-      progress.textContent = `🧪 Physik Escape mit Einstein • ${solvedStations.size} / ${questions.length} ✅`;
+      progress.textContent = `🧪 Einstein Escape • ${solvedStations.size} / ${questions.length} ✅`;
     }
 
     // === MindAR Events ===
@@ -290,6 +296,8 @@
     });
 
     console.log('🧪 Physik Escape mit Einstein gestartet!');
+    console.log('📁 Modell-Pfad: ./assets/einstein/scene.gltf');
+    console.log('📁 Targets-Pfad: ./assets/targets.mind');
   </script>
 </body>
 </html>
