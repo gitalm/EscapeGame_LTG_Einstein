@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 Physik Escape mit Einstein</title>
+  
+  <!-- MindAR Bibliothek -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
+  <!-- A-Frame 3D Engine -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <!-- MindAR A-Frame Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- A-Frame GLTF Loader für 3D-Modelle -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    
+    /* Einstein-Sprachblase */
+    #speech-bubble {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.88);
+      color: white;
+      padding: 30px 40px;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      border: 2px solid #4fc3f7;
+    }
+    #speech-bubble h2 {
+      margin: 0 0 5px 0;
+      color: #ffd54f;
+      font-size: 1.4em;
+    }
+    #speech-bubble .einstein-icon {
+      font-size: 2em;
+    }
+    #speech-bubble p {
+      font-size: 1.15em;
+      margin: 10px 0 18px 0;
+      line-height: 1.4;
+    }
+    .answer-btn {
+      background: #4fc3f7;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      margin: 6px;
+      border-radius: 12px;
+      font-size: 1em;
+      cursor: pointer;
+      font-weight: bold;
+      min-width: 120px;
+      transition: all 0.2s;
+    }
+    .answer-btn:hover { background: #29b6f6; transform: scale(1.03); }
+    .answer-btn.correct { background: #66bb6a; }
+    .answer-btn.wrong { background: #ef5350; }
+    
+    #progress {
+      position: fixed;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 0.95em;
+      z-index: 50;
+      backdrop-filter: blur(5px);
+    }
+    
+    .win-screen {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 200;
+      color: white;
+      text-align: center;
+    }
+    .win-screen h1 { font-size: 3em; color: #ffd54f; margin: 0; }
+    .win-screen .sub { font-size: 1.3em; color: #4fc3f7; }
+    .win-screen p { font-size: 1em; color: #aaa; max-width: 500px; }
+    .restart-btn {
+      background: #4fc3f7; color: black;
+      border: none; padding: 15px 40px;
+      border-radius: 30px; font-size: 1.2em;
+      cursor: pointer; font-weight: bold; margin-top: 20px;
+    }
+    
+    #hint {
+      position: fixed; bottom: 15px; left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85em; z-index: 30;
+      background: rgba(0,0,0,0.5);
+      padding: 5px 15px; border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- AR Szene -->
+  <a-scene mindar-image="imageTargetSources: ./targets.mind;" embedded color-space="sRGB" renderer="colorManagement: true" vr-mode-ui="enabled: false">
+    
+    <!-- ===== STATION: EINSTEIN-TARGET ===== -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <!-- 3D Einstein Würfel (Platzhalter für ein richtiges Einstein-Modell) -->
+      <a-entity position="0 0.15 0" scale="0.15 0.15 0.15">
+        <!-- Körper -->
+        <a-box position="0 0.5 0" width="1" height="1" depth="0.8" color="#8B4513"></a-box>
+        <!-- Kopf -->
+        <a-sphere position="0 1.1 0" radius="0.45" color="#FFE4C4"></a-sphere>
+        <!-- Haare (Einstein!) -->
+        <a-sphere position="-0.25 1.4 0.2" radius="0.2" color="#DDDDDD"></a-sphere>
+        <a-sphere position="0.25 1.4 0.2" radius="0.2" color="#DDDDDD"></a-sphere>
+        <a-sphere position="-0.35 1.25 0.15" radius="0.18" color="#DDDDDD"></a-sphere>
+        <a-sphere position="0.35 1.25 0.15" radius="0.18" color="#DDDDDD"></a-sphere>
+        <a-sphere position="0 1.45 0.1" radius="0.18" color="#DDDDDD"></a-sphere>
+        <!-- Augen -->
+        <a-sphere position="-0.15 1.1 0.4" radius="0.08" color="#000000"></a-sphere>
+        <a-sphere position="0.15 1.1 0.4" radius="0.08" color="#000000"></a-sphere>
+        <!-- Schnurrbart -->
+        <a-torus position="-0.17 0.95 0.4" radius="0.12" radius-tubular="0.03" color="#666666" rotation="0 0 20"></a-torus>
+        <a-torus position="0.17 0.95 0.4" radius="0.12" radius-tubular="0.03" color="#666666" rotation="0 0 -20"></a-torus>
+        <!-- Fragezeichen über dem Kopf -->
+        <a-text value="?" position="0 1.8 0" color="#ffd54f" align="center" width="3" font-size="30"></a-text>
+      </a-entity>
+      
+      <!-- Namenstext -->
+      <a-text value="👨‍🔬 Prof. Einstein" position="0 -0.5 0" color="#ffd54f" align="center" width="5"
+              font-size="12" side="double"></a-text>
+    </a-entity>
+
+    <a-camera position="0 0 0"></a-camera>
+  </a-scene>
+
+  <!-- UI -->
+  <div id="progress">🧪 Physik Escape mit Einstein • 0 / 3 ✅</div>
+  <div id="hint">📱 Scanne das Target-Bild mit deiner Kamera!</div>
+
+  <div id="speech-bubble">
+    <div class="einstein-icon">🧑‍🔬</div>
+    <h2 id="stationTitle">Professor Einstein</h2>
+    <p id="questionText">Moin moin, ich bin Einstein! Beantworte meine Physik-Fragen um zu entkommen!</p>
+    <div id="answerButtons"></div>
+  </div>
+
+  <div class="win-screen" id="winScreen">
+    <h1>🧪 ESCAPE! 🎉</h1>
+    <div class="sub">"Phantasie ist wichtiger als Wissen!"</div>
+    <p>- Albert Einstein</p>
+    <p style="margin-top: 20px;">Du hast alle 3 Fragen richtig beantwortet<br>und bist aus dem Physik-Labor entkommen!</p>
+    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
+  </div>
+
+  <script>
+    // ==========================================
+    //  PHYSIK-FRAGEN VON EINSTEIN
+    // ==========================================
+    
+    const questions = [
+      {
+        id: 0,
+        name: "Frage 1: Lichtgeschwindigkeit",
+        question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum, mein junger Freund?“",
+        answers: ["299.792.458 m/s", "150.000.000 m/s", "3.000.000 m/s", "299.792 m/s"],
+        correct: 0,
+        hint: "💡 Denk an eine runde Zahl: ca. 300 Millionen m/s!"
+      },
+      {
+        id: 1,
+        name: "Frage 2: Relativität",
+        question: "🧑‍🔬 „E = mc² – aber was bedeutet das m?“",
+        answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
+        correct: 0,
+        hint: "💡 Die Masse eines Objekts – sie wird zu Energie!"
+      },
+      {
+        id: 2,
+        name: "Frage 3: Quantenphysik",
+        question: "🧑‍🔬 „Ist das Licht nun Welle oder Teilchen? Was denkst du?“",
+        answers: ["Beides - Welle-Teilchen-Dualismus", "Nur Welle", "Nur Teilchen", "Weder noch"],
+        correct: 0,
+        hint: "💡 Ein bisschen von beidem – das macht die Quantenphysik aus!"
+      }
+    ];
+
+    let solvedStations = new Set();
+    let questionActive = false;
+    let currentStation = -1;
+
+    const bubble = document.getElementById('speech-bubble');
+    const stationTitle = document.getElementById('stationTitle');
+    const questionText = document.getElementById('questionText');
+    const answerButtons = document.getElementById('answerButtons');
+    const progress = document.getElementById('progress');
+    const winScreen = document.getElementById('winScreen');
+    const hint = document.getElementById('hint');
+
+    function onStationFound(stationId) {
+      if (solvedStations.has(stationId) || questionActive) return;
+      
+      currentStation = stationId;
+      const q = questions[stationId];
+      
+      stationTitle.textContent = q.name;
+      questionText.textContent = q.question;
+      answerButtons.innerHTML = '';
+      
+      q.answers.forEach((answer, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = answer;
+        btn.onclick = () => checkAnswer(idx, q);
+        answerButtons.appendChild(btn);
+      });
+      
+      bubble.style.display = 'block';
+      hint.textContent = '❓ Einstein wartet auf deine Antwort!';
+      questionActive = true;
+    }
+
+    function checkAnswer(selected, q) {
+      const buttons = answerButtons.querySelectorAll('.answer-btn');
+      
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (idx === q.correct) btn.classList.add('correct');
+        else if (idx === selected) btn.classList.add('wrong');
+      });
+
+      if (selected === q.correct) {
+        solvedStations.add(q.id);
+        updateProgress();
+        
+        questionText.textContent = "✅ Richtig! „Ausgezeichnet!“ 🎉";
+        
+        setTimeout(() => {
+          bubble.style.display = 'none';
+          questionActive = false;
+          hint.textContent = '📱 Scanne das Target erneut für die nächste Frage!';
+          
+          if (solvedStations.size === questions.length) {
+            setTimeout(() => { winScreen.style.display = 'flex'; }, 500);
+          }
+        }, 2000);
+      } else {
+        setTimeout(() => {
+          questionText.textContent = "❌ " + q.hint;
+          setTimeout(() => {
+            bubble.style.display = 'none';
+            questionActive = false;
+            hint.textContent = '📱 Scanne das Target erneut für einen neuen Versuch!';
+            buttons.forEach(btn => { btn.disabled = false; btn.classList.remove('correct', 'wrong'); });
+          }, 3000);
+        }, 1500);
+      }
+    }
+
+    function updateProgress() {
+      progress.textContent = `🧪 Physik Escape mit Einstein • ${solvedStations.size} / ${questions.length} ✅`;
+    }
+
+    // === MindAR Events ===
+    document.querySelectorAll('[mindar-image-target]').forEach((entity, idx) => {
+      entity.addEventListener('targetFound', () => {
+        console.log(`Target ${idx} gefunden!`);
+        onStationFound(idx);
+      });
+      entity.addEventListener('targetLost', () => {
+        console.log(`Target ${idx} verloren`);
+        if (!questionActive) {
+          hint.textContent = '📱 Scanne das Target-Bild mit deiner Kamera!';
+        }
+      });
+    });
+
+    console.log('🧪 Physik Escape mit Einstein gestartet!');
+  </script>
+</body>
+</html>

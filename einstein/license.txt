@@ -1,0 +1,11 @@
+Model Information:
+* title:	Einstein
+* source:	https://sketchfab.com/3d-models/einstein-9cae5aaca34f408fa2d268057be4916e
+* author:	yafiko (https://sketchfab.com/yafiko)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Einstein" (https://sketchfab.com/3d-models/einstein-9cae5aaca34f408fa2d268057be4916e) by yafiko (https://sketchfab.com/yafiko) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
