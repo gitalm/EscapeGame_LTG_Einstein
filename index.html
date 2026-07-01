@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>🧪 Physik Escape mit Einstein</title>
   
-  <!-- Drei.js Bibliothek -->
+  <!-- Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <!-- MindAR Standalone (ohne A-Frame) -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
-  <!-- GLTF Loader für 3D-Modelle -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
+  
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -21,7 +17,6 @@
       background: #000;
     }
     
-    /* Canvas Container */
     #container {
       position: fixed;
       top: 0;
@@ -190,13 +185,14 @@
 
   <!-- DEBUG Overlay -->
   <div id="debug">
-    <div>=== DEBUG v2.0 (Three.js) ===</div>
+    <div>=== DEBUG v2.1 ===</div>
     <div id="dStatus">⏳ Warte auf Start...</div>
     <hr>
     <div id="dCam">📷 Kamera: ?</div>
     <div id="dAR">📡 AR: ?</div>
     <div id="dTarget">🎯 Target: ?</div>
     <div id="dModel">🧑‍🔬 Modell: ?</div>
+    <div id="dLibs">📚 Libs: ?</div>
   </div>
 
   <!-- Container für Three.js Canvas -->
@@ -204,7 +200,7 @@
 
   <!-- UI -->
   <div id="progress">🧪 0 / 3 ✅</div>
-  <div id="hint">📱 Halte die Kamera auf ein Target-Bild</div>
+  <div id="hint">📱 Lade AR-Bibliothek...</div>
 
   <!-- Sprachblase -->
   <div id="speech-bubble">
@@ -222,7 +218,64 @@
     <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
   </div>
 
+  <!-- MindAR und GLTFLoader dynamisch laden -->
   <script>
+    // ==========================================
+    //  BIBLIOTHEKEN DYNAMISCH LADEN
+    // ==========================================
+    
+    const debugLibs = document.getElementById('dLibs');
+    
+    function loadScript(url) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Fehler beim Laden: ${url}`));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadLibraries() {
+      debugLibs.innerHTML = '⏳ Lade Three.js...';
+      
+      try {
+        // Three.js ist schon geladen (im Header)
+        if (typeof THREE === 'undefined') {
+          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+        }
+        debugLibs.innerHTML = '✅ Three.js geladen';
+        
+        // MindAR laden (KORREKTE URL!)
+        debugLibs.innerHTML = '⏳ Lade MindAR...';
+        
+        // Versuche verschiedene CDN-Quellen
+        try {
+          await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js');
+        } catch(e) {
+          // Fallback auf andere Version
+          await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.4/dist/mindar-image-three.prod.js');
+        }
+        
+        if (typeof MINDAR === 'undefined') {
+          throw new Error('MINDAR nach Laden immer noch undefined');
+        }
+        
+        debugLibs.innerHTML = '✅ Three.js + MindAR geladen';
+        log('Alle Bibliotheken geladen ✅');
+        
+        // GLTFLoader laden
+        await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js');
+        debugLibs.innerHTML = '✅ Alle Libs geladen';
+        
+        return true;
+      } catch(err) {
+        debugLibs.innerHTML = '❌ ' + err.message;
+        log('Bibliotheks-Fehler: ' + err.message, 'err');
+        return false;
+      }
+    }
+
     // ==========================================
     //  DEBUG HELPER
     // ==========================================
@@ -248,19 +301,9 @@
     }
 
     // ==========================================
-    //  HAUPTLOGIK
+    //  FRAGEN
     // ==========================================
 
-    const startOverlay = document.getElementById('startOverlay');
-    const startBtn = document.getElementById('startBtn');
-    const container = document.getElementById('container');
-    
-    let mindarController = null;
-    let einsteinModel = null;
-    let anchor = null;
-    let isRunning = false;
-
-    // Globale Variablen für die Fragen
     const questions = [
       {
         id: 0,
@@ -290,7 +333,10 @@
 
     let solvedStations = new Set();
     let questionActive = false;
+    let mindarController = null;
+    let isRunning = false;
 
+    const container = document.getElementById('container');
     const bubble = document.getElementById('speech-bubble');
     const stationTitle = document.getElementById('stationTitle');
     const questionText = document.getElementById('questionText');
@@ -303,12 +349,27 @@
     //  START BUTTON
     // ==========================================
 
+    const startBtn = document.getElementById('startBtn');
+    const startOverlay = document.getElementById('startOverlay');
+
     startBtn.addEventListener('click', async () => {
-      log('Benutzer hat geklickt – starte...');
+      log('Start geklickt');
       debug.set(debug.status, 'Starte...');
+      startBtn.disabled = true;
+      startBtn.textContent = '⏳ Wird gestartet...';
+      
+      // 1. Bibliotheken laden
+      const libsLoaded = await loadLibraries();
+      if (!libsLoaded) {
+        debug.set(debug.status, '❌ Bibliotheken konnten nicht geladen werden', 'err');
+        startBtn.disabled = false;
+        startBtn.textContent = '📷 Kamera starten';
+        return;
+      }
       
       try {
-        // 1. Kamera anfordern
+        // 2. Kamera anfordern
+        debug.set(debug.status, 'Starte Kamera...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             facingMode: 'environment',
@@ -317,223 +378,150 @@
           } 
         });
         
-        log('Kamera läuft ✅');
-        debug.set(debug.cam, 'Kamera läuft');
+        // Stream stoppen (MindAR startet eigene Kamera)
+        stream.getTracks().forEach(track => track.stop());
         
-        // 2. Overlay ausblenden
+        log('Kamera-Berechtigung erteilt ✅');
+        debug.set(debug.cam, 'Berechtigung erteilt');
+        
+        // 3. Overlay ausblenden
         startOverlay.style.display = 'none';
         debug.show();
         container.style.display = 'block';
         
-        // 3. MindAR Controller initialisieren
-        mindarController = new window.MINDAR.IMAGE.MindARThree({
+        // 4. MindAR initialisieren
+        debug.set(debug.status, 'Initialisiere AR...');
+        
+        mindarController = new MINDAR.IMAGE.MindARThree({
           container: container,
           imageTargetSrc: './assets/targets.mind',
-          maxTrack: 1,
-          filterMinCF: 0.1,
-          filterBeta: 1000,
-          warmupTolerance: 100
+          maxTrack: 1
         });
         
         const { renderer, scene, camera } = mindarController;
         
-        // Kamera-Einstellungen
+        // 5. Renderer einstellen
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputEncoding = THREE.sRGBEncoding;
         
-        // Licht hinzufügen
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        
+        // 6. Licht
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
         const dirLight = new THREE.DirectionalLight(0xffffff, 1);
         dirLight.position.set(1, 2, 1);
         scene.add(dirLight);
         
-        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-        dirLight2.position.set(-1, -1, -1);
-        scene.add(dirLight2);
+        // 7. Anchor
+        const anchor = mindarController.addAnchor(0);
         
-        debug.set(debug.ar, 'MindAR initialisiert ✅');
-        log('MindAR Three initialisiert');
-        
-        // 4. Anchor für Target 0 erstellen
-        anchor = mindarController.addAnchor(0);
-        
-        // 5. 3D-Modell laden
+        // 8. Modell laden
         const loader = new THREE.GLTFLoader();
         
         loader.load(
           './assets/einstein/scene.gltf',
           (gltf) => {
-            einsteinModel = gltf.scene;
-            einsteinModel.scale.set(0.5, 0.5, 0.5);
-            einsteinModel.position.set(0, 0.1, 0);
+            const model = gltf.scene;
+            model.scale.set(0.5, 0.5, 0.5);
+            model.position.set(0, 0, 0);
+            anchor.group.add(model);
             
-            // Modell sanft schweben lassen
-            anchor.group.add(einsteinModel);
-            
-            debug.set(debug.model, '3D-Modell geladen ✅');
+            debug.set(debug.model, 'Modell geladen ✅');
             log('Einstein-Modell geladen');
           },
-          (xhr) => {
-            const progress = Math.round((xhr.loaded / xhr.total) * 100);
-            if (progress % 25 === 0) {
-              log(`Modell lädt: ${progress}%`);
-            }
-          },
-          (error) => {
-            debug.set(debug.model, 'Modell-Fehler!', 'err');
-            log('Modell-Fehler: ' + error.message, 'err');
+          undefined,
+          (err) => {
+            debug.set(debug.model, 'Modell-Fehler - zeige Würfel', 'warn');
+            log('Modell-Fehler, Fallback', 'warn');
             
-            // Fallback: Würfel anzeigen
             const fallback = new THREE.Mesh(
               new THREE.BoxGeometry(0.2, 0.2, 0.2),
               new THREE.MeshStandardMaterial({ color: 0x4fc3f7 })
             );
-            fallback.position.set(0, 0.1, 0);
             anchor.group.add(fallback);
-            
-            const textFallback = new THREE.Mesh(
-              new THREE.BoxGeometry(0.4, 0.05, 0.05),
-              new THREE.MeshStandardMaterial({ color: 0xffd54f })
-            );
-            textFallback.position.set(0, 0.3, 0);
-            anchor.group.add(textFallback);
           }
         );
         
-        // 6. Target Events
+        // 9. Target Events
         anchor.onTargetFound = () => {
           debug.set(debug.target, 'Target GEFUNDEN! 🎯', 'ok');
           debug.set(debug.status, '🎯 Target erkannt!', 'ok');
-          log('Target gefunden!');
           
-          if (navigator.vibrate) navigator.vibrate(100);
-          
-          // Frage anzeigen
-          showQuestion(0);
+          if (!solvedStations.has(0) && !questionActive) {
+            const q = questions[0];
+            stationTitle.textContent = q.name;
+            questionText.textContent = q.question;
+            answerButtons.innerHTML = '';
+            
+            q.answers.forEach((answer, i) => {
+              const btn = document.createElement('button');
+              btn.className = 'answer-btn';
+              btn.textContent = answer;
+              btn.onclick = () => {
+                const btns = answerButtons.querySelectorAll('.answer-btn');
+                btns.forEach(b => b.disabled = true);
+                
+                if (i === q.correct) {
+                  btn.classList.add('correct');
+                  solvedStations.add(0);
+                  progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
+                  questionText.textContent = "✅ Richtig! 🎉";
+                  
+                  setTimeout(() => {
+                    bubble.style.display = 'none';
+                    questionActive = false;
+                  }, 1500);
+                } else {
+                  btn.classList.add('wrong');
+                  questionText.textContent = "❌ " + q.hint;
+                  setTimeout(() => {
+                    bubble.style.display = 'none';
+                    questionActive = false;
+                    btns.forEach(b => { b.disabled = false; b.classList.remove('wrong'); });
+                  }, 2500);
+                }
+              };
+              answerButtons.appendChild(btn);
+            });
+            
+            bubble.style.display = 'block';
+            questionActive = true;
+          }
         };
         
         anchor.onTargetLost = () => {
           debug.set(debug.target, 'Target verloren', 'warn');
           debug.set(debug.status, 'Suche Target...');
-          log('Target verloren', 'warn');
-          
-          if (!questionActive) {
-            bubble.style.display = 'none';
-          }
         };
         
-        // 7. MindAR starten
+        // 10. Start
         await mindarController.start();
         isRunning = true;
         
         debug.set(debug.ar, 'MindAR läuft ✅');
-        debug.set(debug.status, 'AR aktiv – suche Target...');
-        log('MindAR gestartet');
+        debug.set(debug.status, 'AR aktiv - suche Target...');
+        log('MindAR gestartet ✅');
         
-        // 8. UI einblenden
         document.getElementById('progress').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
+        hint.textContent = '📱 Halte die Kamera auf ein Target-Bild';
         
-        // 9. Kamera-Stream übergeben (für MindAR Three nicht nötig, macht es selbst)
-        
-        // 10. Render-Loop
-        const renderLoop = () => {
+        // Render-Loop
+        const render = () => {
           if (isRunning) {
-            mindarController.update();
             renderer.render(scene, camera);
-            requestAnimationFrame(renderLoop);
+            requestAnimationFrame(render);
           }
         };
-        renderLoop();
+        render();
         
-      } catch (err) {
+      } catch(err) {
         log('Fehler: ' + err.message, 'err');
-        debug.set(debug.cam, 'Fehler: ' + err.message, 'err');
-        debug.set(debug.status, '❌ Fehler!', 'err');
-        alert('Fehler beim Starten:\n\n' + err.message);
+        debug.set(debug.status, '❌ ' + err.message, 'err');
+        startBtn.disabled = false;
+        startBtn.textContent = '📷 Kamera starten';
+        alert('Fehler: ' + err.message);
       }
     });
-
-    // ==========================================
-    //  FRAGEN-LOGIK
-    // ==========================================
-
-    function showQuestion(stationId) {
-      if (solvedStations.has(stationId) || questionActive) return;
-      
-      const q = questions[stationId] || questions[0];
-      stationTitle.textContent = q.name;
-      questionText.textContent = q.question;
-      answerButtons.innerHTML = '';
-      
-      q.answers.forEach((answer, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'answer-btn';
-        btn.textContent = answer;
-        btn.onclick = () => {
-          const btns = answerButtons.querySelectorAll('.answer-btn');
-          btns.forEach(b => { b.disabled = true; });
-          
-          if (i === q.correct) {
-            btn.classList.add('correct');
-            solvedStations.add(stationId);
-            progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
-            questionText.textContent = "✅ Richtig! „Ausgezeichnet!“ 🎉";
-            
-            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
-            
-            setTimeout(() => {
-              bubble.style.display = 'none';
-              questionActive = false;
-              hint.textContent = '📱 Scanne das nächste Target!';
-              
-              if (solvedStations.size === questions.length) {
-                setTimeout(() => { 
-                  winScreen.style.display = 'flex';
-                  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-                }, 800);
-              }
-            }, 1800);
-          } else {
-            btn.classList.add('wrong');
-            questionText.textContent = "❌ " + q.hint;
-            
-            if (navigator.vibrate) navigator.vibrate(300);
-            
-            setTimeout(() => {
-              bubble.style.display = 'none';
-              questionActive = false;
-              hint.textContent = '📱 Nochmal versuchen – Target erneut scannen!';
-              btns.forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
-            }, 3000);
-          }
-        };
-        answerButtons.appendChild(btn);
-      });
-      
-      bubble.style.display = 'block';
-      questionActive = true;
-      hint.textContent = '❓ Einstein wartet auf deine Antwort!';
-    }
-
-    // ==========================================
-    //  WINDOW RESIZE
-    // ==========================================
-
-    window.addEventListener('resize', () => {
-      if (mindarController) {
-        const { renderer, camera } = mindarController;
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-      }
-    });
-
-    log('🧪 Physik Escape v2.0 (Three.js) gestartet');
-    console.log('ℹ️  Warte auf Benutzer-Klick');
   </script>
 </body>
 </html>
