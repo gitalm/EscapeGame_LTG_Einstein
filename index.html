@@ -17,11 +17,11 @@
   <style>
     body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
     
-    /* Overlay für Kamera-Start */
+    /* START-OVERLAY */
     #startOverlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       z-index: 10000;
       display: flex;
       flex-direction: column;
@@ -30,9 +30,10 @@
       text-align: center;
       color: white;
     }
-    #startOverlay h1 { font-size: 2em; color: #ffd54f; margin-bottom: 10px; }
-    #startOverlay p { font-size: 1.1em; color: #ccc; max-width: 300px; margin: 5px 0; }
-    #startOverlay .icon { font-size: 4em; margin: 15px; }
+    #startOverlay h1 { font-size: 2.2em; color: #ffd54f; margin-bottom: 5px; }
+    #startOverlay .subtitle { font-size: 1em; color: #4fc3f7; margin-top: 0; }
+    #startOverlay p { font-size: 1em; color: #ccc; max-width: 300px; margin: 8px 0; }
+    #startOverlay .icon { font-size: 5em; margin: 10px; }
     #startBtn {
       background: #4fc3f7;
       color: #000;
@@ -43,9 +44,10 @@
       font-weight: bold;
       cursor: pointer;
       margin-top: 25px;
-      transition: transform 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(79, 195, 247, 0.4);
     }
-    #startBtn:hover { transform: scale(1.05); }
+    #startBtn:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(79, 195, 247, 0.6); }
     #startBtn:active { transform: scale(0.95); }
     #startOverlay small { color: #666; margin-top: 20px; font-size: 0.8em; }
     
@@ -69,92 +71,139 @@
     #debug .warn { color: #ff0; }
     #debug .err { color: #f44; }
     #debug .ok { color: #0f0; }
+    #debug hr { border-color: #333; margin: 4px 0; }
     
+    /* Sprachblase */
     #speech-bubble {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9); color: white;
-      padding: 25px 35px; border-radius: 20px;
-      max-width: 420px; width: 88%; text-align: center;
-      z-index: 100; display: none;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.92);
+      color: white;
+      padding: 20px 25px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 88%;
+      text-align: center;
+      z-index: 100;
+      display: none;
       box-shadow: 0 10px 40px rgba(0,0,0,0.7);
       border: 2px solid #4fc3f7;
+      backdrop-filter: blur(5px);
     }
-    #speech-bubble h2 { margin: 0 0 5px 0; color: #ffd54f; font-size: 1.3em; }
-    #speech-bubble p { font-size: 1.1em; margin: 10px 0 18px 0; line-height: 1.4; }
+    #speech-bubble h2 { margin: 0 0 5px 0; color: #ffd54f; font-size: 1.2em; }
+    #speech-bubble p { font-size: 1.05em; margin: 10px 0 15px 0; line-height: 1.4; }
     .answer-btn {
-      background: #4fc3f7; color: #000; border: none;
-      padding: 10px 20px; margin: 5px; border-radius: 10px;
-      font-size: 0.95em; cursor: pointer; font-weight: bold;
-      min-width: 100px;
+      background: #4fc3f7;
+      color: #000;
+      border: none;
+      padding: 10px 18px;
+      margin: 4px;
+      border-radius: 10px;
+      font-size: 0.9em;
+      cursor: pointer;
+      font-weight: bold;
+      min-width: 80px;
+      transition: all 0.2s;
     }
+    .answer-btn:hover { background: #29b6f6; transform: scale(1.03); }
     .answer-btn.correct { background: #66bb6a; }
     .answer-btn.wrong { background: #ef5350; }
-    .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
     
+    /* Progress */
     #progress {
-      position: fixed; top: 15px; right: 15px;
-      background: rgba(0,0,0,0.8); color: white;
-      padding: 8px 20px; border-radius: 30px;
-      font-size: 0.9em; z-index: 50;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 0.85em;
+      z-index: 50;
       display: none;
+      backdrop-filter: blur(5px);
     }
     
+    /* Hint */
     #hint {
-      position: fixed; bottom: 15px; left: 50%;
+      position: fixed;
+      bottom: 15px;
+      left: 50%;
       transform: translateX(-50%);
-      color: white; font-size: 0.85em;
-      z-index: 30; background: rgba(0,0,0,0.7);
-      padding: 6px 16px; border-radius: 20px;
+      color: white;
+      font-size: 0.8em;
+      z-index: 30;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 14px;
+      border-radius: 20px;
       text-align: center;
       display: none;
+      backdrop-filter: blur(3px);
+      white-space: nowrap;
     }
     
+    /* Win Screen */
     .win-screen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.93); display: none;
-      justify-content: center; align-items: center;
-      flex-direction: column; z-index: 200; color: white;
-      text-align: center; padding: 20px;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.93);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 200;
+      color: white;
+      text-align: center;
+      padding: 20px;
       box-sizing: border-box;
     }
     .win-screen h1 { font-size: 2.8em; color: #ffd54f; margin: 0; }
+    .win-screen .sub { font-size: 1.2em; color: #4fc3f7; margin: 15px 0; font-style: italic; }
+    .win-screen p { font-size: 1em; color: #aaa; max-width: 500px; }
     .restart-btn {
-      background: #4fc3f7; color: black; border: none;
-      padding: 14px 40px; border-radius: 30px;
-      font-size: 1.2em; cursor: pointer; font-weight: bold;
+      background: #4fc3f7;
+      color: black;
+      border: none;
+      padding: 14px 40px;
+      border-radius: 30px;
+      font-size: 1.2em;
+      cursor: pointer;
+      font-weight: bold;
       margin-top: 25px;
     }
   </style>
 </head>
 <body>
 
-  <!-- START-OVERLAY (Benutzer muss klicken!) -->
+  <!-- START-OVERLAY -->
   <div id="startOverlay">
     <div class="icon">🧪</div>
-    <h1>Physik Escape<br>mit Einstein</h1>
+    <h1>Physik Escape</h1>
+    <div class="subtitle">mit Albert Einstein</div>
     <p>Scanne versteckte Bilder im Schulhaus<br>und löse Physik-Fragen!</p>
     <p style="font-size: 0.85em; color: #888;">🔍 AR-Bilderkennung</p>
     <button id="startBtn">📷 Kamera starten</button>
     <small>Kamera-Zugriff wird benötigt</small>
   </div>
 
-  <!-- DEBUG Overlay (wird nach Klick eingeblendet) -->
+  <!-- DEBUG Overlay -->
   <div id="debug">
-    <div>=== DEBUG ===</div>
-    <div id="dVersion">v1.1 (Fix Kamera-Start)</div>
-    <hr style="border-color:#333;">
+    <div>=== DEBUG v1.3 ===</div>
     <div id="dStatus">⏳ Warte auf Start...</div>
+    <hr>
     <div id="dCam">📷 Kamera: ?</div>
     <div id="dAR">📡 AR: ?</div>
     <div id="dTarget">🎯 Target: ?</div>
     <div id="dModel">🧑‍🔬 Modell: ?</div>
   </div>
 
-  <!-- AR Szene (zuerst versteckt) -->
+  <!-- AR Szene -->
   <a-scene 
     id="arScene"
-    mindar-image="imageTargetSources: ./assets/targets.mind; autoStart: false;" 
+    mindar-image="imageTargetSources: ./assets/targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;" 
     embedded 
     color-space="sRGB" 
     renderer="colorManagement: true"
@@ -166,6 +215,7 @@
     <!-- STATION: EINSTEIN -->
     <a-entity mindar-image-target="targetIndex: 0">
       
+      <!-- 3D Einstein Modell -->
       <a-entity 
         id="einsteinModel"
         gltf-model="url(./assets/einstein/scene.gltf)" 
@@ -175,8 +225,10 @@
       >
       </a-entity>
       
+      <!-- Leuchteffekt -->
       <a-circle position="0 -0.15 0" radius="0.4" color="#4fc3f7" opacity="0.2" rotation="-90 0 0"></a-circle>
 
+      <!-- Name -->
       <a-text 
         value="🧑‍🔬 Prof. Einstein" 
         position="0 -0.6 0" 
@@ -193,18 +245,22 @@
 
   <!-- UI -->
   <div id="progress">🧪 0 / 3 ✅</div>
-  <div id="hint">📱 Scanne das Target-Bild!</div>
+  <div id="hint">📱 Halte die Kamera auf ein Target-Bild</div>
 
+  <!-- Sprachblase -->
   <div id="speech-bubble">
     <h2 id="stationTitle">Professor Einstein</h2>
-    <p id="questionText">„Moin moin! Beantworte meine Fragen!“</p>
+    <p id="questionText">„Moin moin! Beantworte meine Fragen, um zu entkommen!“</p>
     <div id="answerButtons"></div>
   </div>
 
+  <!-- Win Screen -->
   <div class="win-screen" id="winScreen">
     <h1>🧪 ESCAPE! 🎉</h1>
+    <div class="sub">„Phantasie ist wichtiger als Wissen!“</div>
     <p>– Albert Einstein</p>
-    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal</button>
+    <p style="margin-top: 20px;">Du hast alle Fragen richtig beantwortet<br>und bist aus dem Physik-Labor entkommen!</p>
+    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
   </div>
 
   <script>
@@ -233,7 +289,7 @@
     }
 
     // ==========================================
-    //  KAMERA-START PER BUTTON (DER FIX!)
+    //  KAMERA-START PER BUTTON
     // ==========================================
 
     const startOverlay = document.getElementById('startOverlay');
@@ -245,16 +301,17 @@
       debug.set(debug.status, 'Starte Kamera...');
       
       try {
-        // 1. Kamera-Berechtigung explizit anfordern (USER GESTURE!)
+        // 1. Kamera starten
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
         });
         
-        // Stream stoppen (MindAR startet eigene Kamera)
-        stream.getTracks().forEach(track => track.stop());
-        
-        log('Kamera-Berechtigung erteilt ✅');
-        debug.set(debug.cam, 'Berechtigung erteilt');
+        log('Kamera läuft ✅');
+        debug.set(debug.cam, 'Kamera läuft');
         
         // 2. Start-Overlay ausblenden
         startOverlay.style.display = 'none';
@@ -262,19 +319,44 @@
         // 3. Debug einblenden
         debug.show();
         
-        // 4. A-Frame Szene anzeigen
+        // 4. Szene anzeigen
         arScene.style.display = 'block';
         
-        // 5. MindAR manuell starten
-        const mindar = arScene.components['mindar-image'];
-        if (mindar && mindar.start) {
-          await mindar.start();
-          debug.set(debug.ar, 'MindAR gestartet ✅');
-          debug.set(debug.status, 'AR läuft – suche Target...');
-          log('MindAR gestartet');
-        }
+        // 5. Kurz warten und dann MindAR starten
+        setTimeout(async () => {
+          try {
+            const mindar = arScene.components['mindar-image'];
+            if (mindar && mindar.start) {
+              await mindar.start();
+              
+              // 6. Kamera-Stream an MindAR übergeben
+              if (mindar.video) {
+                // Bestehende Tracks stoppen falls vorhanden
+                if (mindar.video.srcObject) {
+                  const oldStream = mindar.video.srcObject;
+                  oldStream.getTracks().forEach(t => t.stop());
+                }
+                mindar.video.srcObject = stream;
+                await mindar.video.play();
+                log('Video-Stream an MindAR übergeben ✅');
+                debug.set(debug.ar, 'MindAR gestartet ✅');
+                debug.set(debug.status, 'AR läuft – suche Target...');
+              } else {
+                debug.set(debug.ar, 'MindAR gestartet (kein Video-Element)', 'warn');
+                debug.set(debug.status, 'AR läuft');
+              }
+            } else {
+              debug.set(debug.ar, 'MindAR nicht gefunden!', 'err');
+              debug.set(debug.status, '❌ MindAR Fehler', 'err');
+            }
+          } catch (err) {
+            log('MindAR Start-Fehler: ' + err.message, 'err');
+            debug.set(debug.ar, 'Fehler: ' + err.message, 'err');
+            debug.set(debug.status, '❌ MindAR Fehler', 'err');
+          }
+        }, 1000);
         
-        // 6. UI einblenden
+        // 7. UI einblenden
         document.getElementById('progress').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
         
@@ -282,7 +364,7 @@
         log('Kamera-Fehler: ' + err.message, 'err');
         debug.set(debug.cam, 'Fehler: ' + err.message, 'err');
         debug.set(debug.status, '❌ Kamera-Fehler!', 'err');
-        alert('Kamera-Zugriff fehlgeschlagen!\n\nBitte erlaube den Kamera-Zugriff in den Browser-Einstellungen und lade die Seite neu.\n\nFehler: ' + err.message);
+        alert('Kamera-Zugriff fehlgeschlagen!\n\nBitte erlaube den Kamera-Zugriff und lade die Seite neu.\n\nFehler: ' + err.message);
       }
     });
 
@@ -292,7 +374,7 @@
 
     arScene.addEventListener('loaded', () => {
       log('A-Frame Szene geladen');
-      debug.set(debug.ar, 'Szene geladen (warte auf Start)');
+      debug.set(debug.ar, 'Szene geladen');
     });
 
     // ==========================================
@@ -304,8 +386,9 @@
       log('Einstein-Modell geladen');
     });
 
-    document.querySelector('#einsteinModel').addEventListener('model-error', () => {
-      debug.set(debug.model, 'Modell-Fehler!', 'err');
+    document.querySelector('#einsteinModel').addEventListener('model-error', (err) => {
+      debug.set(debug.model, 'Modell-Fehler! Pfad prüfen', 'err');
+      log('Modell-Fehler', 'err');
     });
 
     // ==========================================
@@ -317,6 +400,9 @@
         debug.set(debug.target, `Target ${idx} GEFUNDEN! 🎯`, 'ok');
         debug.set(debug.status, '🎯 Target erkannt!', 'ok');
         log(`Target ${idx} gefunden!`);
+        
+        // Vibration bei Target-Fund (iOS & Android)
+        if (navigator.vibrate) navigator.vibrate(100);
       });
       
       entity.addEventListener('targetLost', () => {
@@ -331,22 +417,28 @@
 
     const questions = [
       {
-        id: 0, name: "Frage 1",
-        question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum?“",
+        id: 0,
+        name: "Frage 1: Lichtgeschwindigkeit",
+        question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum, mein junger Freund?“",
         answers: ["299.792.458 m/s", "150.000.000 m/s", "3.000.000 m/s", "299.792 m/s"],
-        correct: 0, hint: "💡 Ca. 300 Millionen m/s!"
+        correct: 0,
+        hint: "💡 Denk an eine runde Zahl: ca. 300 Millionen m/s!"
       },
       {
-        id: 1, name: "Frage 2",
-        question: "🧑‍🔬 „E = mc² – was bedeutet m?“",
+        id: 1,
+        name: "Frage 2: Relativität",
+        question: "🧑‍🔬 „E = mc² – aber was bedeutet das kleine m?“",
         answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
-        correct: 0, hint: "💡 Die Masse wird zu Energie!"
+        correct: 0,
+        hint: "💡 Die Masse eines Objekts – sie wird zu Energie!"
       },
       {
-        id: 2, name: "Frage 3",
-        question: "🧑‍🔬 „Welle oder Teilchen?“",
-        answers: ["Beides", "Nur Welle", "Nur Teilchen", "Weder noch"],
-        correct: 0, hint: "💡 Welle-Teilchen-Dualismus!"
+        id: 2,
+        name: "Frage 3: Quantenphysik",
+        question: "🧑‍🔬 „Ist Licht nun Welle oder Teilchen? Was denkst du?“",
+        answers: ["Beides - Welle-Teilchen-Dualismus", "Nur Welle", "Nur Teilchen", "Weder noch"],
+        correct: 0,
+        hint: "💡 Ein bisschen von beidem – das macht die Quantenphysik aus!"
       }
     ];
 
@@ -377,28 +469,39 @@
           btn.onclick = () => {
             const btns = answerButtons.querySelectorAll('.answer-btn');
             btns.forEach(b => { b.disabled = true; });
+            
             if (i === q.correct) {
               btn.classList.add('correct');
               solvedStations.add(idx);
               progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
-              questionText.textContent = "✅ Richtig! 🎉";
+              questionText.textContent = "✅ Richtig! „Ausgezeichnet!“ 🎉";
+              
+              if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+              
               setTimeout(() => {
                 bubble.style.display = 'none';
                 questionActive = false;
-                hint.textContent = '📱 Scanne das Target erneut!';
+                hint.textContent = '📱 Scanne das nächste Target!';
+                
                 if (solvedStations.size === questions.length) {
-                  winScreen.style.display = 'flex';
+                  setTimeout(() => { 
+                    winScreen.style.display = 'flex';
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+                  }, 800);
                 }
-              }, 1500);
+              }, 1800);
             } else {
               btn.classList.add('wrong');
               questionText.textContent = "❌ " + q.hint;
+              
+              if (navigator.vibrate) navigator.vibrate(300);
+              
               setTimeout(() => {
                 bubble.style.display = 'none';
                 questionActive = false;
-                hint.textContent = '📱 Nochmal versuchen!';
+                hint.textContent = '📱 Nochmal versuchen – Target erneut scannen!';
                 btns.forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
-              }, 2500);
+              }, 3000);
             }
           };
           answerButtons.appendChild(btn);
@@ -406,11 +509,18 @@
         
         bubble.style.display = 'block';
         questionActive = true;
-        hint.textContent = '❓ Frage beantworten!';
+        hint.textContent = '❓ Einstein wartet auf deine Antwort!';
       });
     });
 
-    log('🧪 Debug v1.1 geladen – warte auf Klick');
+    // ==========================================
+    //  INIT
+    // ==========================================
+
+    log('🧪 Physik Escape v1.3 gestartet');
+    log('📁 Modell: ./assets/einstein/scene.gltf');
+    log('📁 Targets: ./assets/targets.mind');
+    console.log('ℹ️  Warte auf Benutzer-Klick um Kamera zu starten');
   </script>
 </body>
 </html>
