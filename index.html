@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🧪 Physik Escape mit Einstein</title>
+  <title>🧪 Physik Escape mit Einstein (Debug)</title>
   
   <!-- MindAR Bibliothek -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
@@ -15,11 +15,32 @@
   <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; }
     
+    /* DEBUG OVERLAY - zeigt Status an */
+    #debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      background: rgba(0,0,0,0.85);
+      color: #0f0;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 400px;
+      border: 1px solid #0f0;
+      pointer-events: none;
+    }
+    #debug .warn { color: #ff0; }
+    #debug .err { color: #f44; }
+    #debug .ok { color: #0f0; }
+    
+    /* Ladebildschirm */
     #loading {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: #1a1a2e; color: white; z-index: 999;
+      background: #1a1a2e; color: white; z-index: 9998;
       display: flex; flex-direction: column;
       justify-content: center; align-items: center; text-align: center;
     }
@@ -39,42 +60,34 @@
       z-index: 100; display: none;
       box-shadow: 0 10px 40px rgba(0,0,0,0.7);
       border: 2px solid #4fc3f7;
-      backdrop-filter: blur(5px);
     }
-    #speech-bubble h2 {
-      margin: 0 0 5px 0; color: #ffd54f; font-size: 1.3em;
-    }
-    #speech-bubble .einstein-icon { font-size: 2.5em; }
-    #speech-bubble p {
-      font-size: 1.1em; margin: 10px 0 18px 0; line-height: 1.4;
-    }
+    #speech-bubble h2 { margin: 0 0 5px 0; color: #ffd54f; font-size: 1.3em; }
+    #speech-bubble p { font-size: 1.1em; margin: 10px 0 18px 0; line-height: 1.4; }
     .answer-btn {
       background: #4fc3f7; color: #000; border: none;
       padding: 10px 20px; margin: 5px; border-radius: 10px;
       font-size: 0.95em; cursor: pointer; font-weight: bold;
-      min-width: 100px; transition: all 0.2s;
+      min-width: 100px;
     }
-    .answer-btn:hover { background: #29b6f6; transform: scale(1.03); }
+    .answer-btn:hover { background: #29b6f6; }
     .answer-btn.correct { background: #66bb6a; }
     .answer-btn.wrong { background: #ef5350; }
     .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; }
     
     #progress {
-      position: fixed; top: 15px; left: 50%;
-      transform: translateX(-50%);
+      position: fixed; top: 15px; right: 15px;
       background: rgba(0,0,0,0.8); color: white;
       padding: 8px 20px; border-radius: 30px;
       font-size: 0.9em; z-index: 50;
-      backdrop-filter: blur(5px); white-space: nowrap;
     }
     
     #hint {
       position: fixed; bottom: 15px; left: 50%;
       transform: translateX(-50%);
-      color: rgba(255,255,255,0.7); font-size: 0.85em;
-      z-index: 30; background: rgba(0,0,0,0.6);
+      color: white; font-size: 0.85em;
+      z-index: 30; background: rgba(0,0,0,0.7);
       padding: 6px 16px; border-radius: 20px;
-      backdrop-filter: blur(3px); text-align: center;
+      text-align: center;
     }
     
     .win-screen {
@@ -86,8 +99,6 @@
       box-sizing: border-box;
     }
     .win-screen h1 { font-size: 2.8em; color: #ffd54f; margin: 0; }
-    .win-screen .sub { font-size: 1.2em; color: #4fc3f7; margin: 10px; }
-    .win-screen p { font-size: 1em; color: #aaa; max-width: 500px; }
     .restart-btn {
       background: #4fc3f7; color: black; border: none;
       padding: 14px 40px; border-radius: 30px;
@@ -102,8 +113,18 @@
   <div id="loading">
     <h2>🧪 Physik Escape mit Einstein</h2>
     <div class="spinner"></div>
-    <p>Lade AR-Szene...</p>
-    <small style="color: #888;">Bitte Kamera-Zugriff erlauben</small>
+    <p id="loadingText">Lade AR-Szene...</p>
+  </div>
+
+  <!-- DEBUG OVERLAY -->
+  <div id="debug">
+    <div>=== DEBUG ===</div>
+    <div id="dStatus">⏳ Warte auf Start...</div>
+    <div id="dAR">📡 AR: ?</div>
+    <div id="dCam">📷 Kamera: ?</div>
+    <div id="dTarget">🎯 Target: ?</div>
+    <div id="dModel">🧑‍🔬 Modell: ?</div>
+    <div id="dVersion">v1.0 (Debug)</div>
   </div>
 
   <!-- AR Szene -->
@@ -116,11 +137,12 @@
     loading-screen="enabled: false"
   >
     
-    <!-- ===== STATION: EINSTEIN ===== -->
+    <!-- STATION: EINSTEIN -->
     <a-entity mindar-image-target="targetIndex: 0">
       
-      <!-- 3D Einstein Modell aus assets/ -->
+      <!-- 3D Einstein Modell -->
       <a-entity 
+        id="einsteinModel"
         gltf-model="url(./assets/einstein/scene.gltf)" 
         position="0 0 0" 
         scale="0.8 0.8 0.8"
@@ -128,12 +150,12 @@
       >
       </a-entity>
       
-      <!-- Leuchteffekt unter Einstein -->
-      <a-circle position="0 -0.15 0" radius="0.4" color="#4fc3f7" opacity="0.15" rotation="-90 0 0"></a-circle>
+      <!-- Leuchteffekt -->
+      <a-circle position="0 -0.15 0" radius="0.4" color="#4fc3f7" opacity="0.2" rotation="-90 0 0"></a-circle>
 
       <!-- Name -->
       <a-text 
-        value="👨‍🔬 Prof. Einstein" 
+        value="🧑‍🔬 Prof. Einstein" 
         position="0 -0.6 0" 
         color="#ffd54f" 
         align="center" 
@@ -143,63 +165,150 @@
       ></a-text>
     </a-entity>
 
-    <a-camera position="0 0 0"></a-camera>
+    <a-camera id="mainCamera" position="0 0 0"></a-camera>
   </a-scene>
 
   <!-- UI -->
-  <div id="progress">🧪 Einstein Escape • 0 / 3 ✅</div>
-  <div id="hint">📱 Scanne das Target-Bild mit deiner Kamera!</div>
+  <div id="progress">🧪 0 / 3 ✅</div>
+  <div id="hint">📱 Scanne das Target-Bild!</div>
 
   <div id="speech-bubble">
-    <div class="einstein-icon">🧑‍🔬</div>
     <h2 id="stationTitle">Professor Einstein</h2>
-    <p id="questionText">„Moin moin! Beantworte meine Fragen, um zu entkommen!“</p>
+    <p id="questionText">„Moin moin! Beantworte meine Fragen!“</p>
     <div id="answerButtons"></div>
   </div>
 
   <div class="win-screen" id="winScreen">
     <h1>🧪 ESCAPE! 🎉</h1>
-    <div class="sub">„Phantasie ist wichtiger als Wissen!“</div>
     <p>– Albert Einstein</p>
-    <p style="margin-top: 20px;">Du hast alle 3 Fragen richtig beantwortet<br>und bist aus dem Physik-Labor entkommen!</p>
-    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
+    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal</button>
   </div>
 
   <script>
     // ==========================================
-    //  PHYSIK-FRAGEN VON EINSTEIN
+    //  DEBUG & STATUS
     // ==========================================
     
+    const debug = {
+      status: document.getElementById('dStatus'),
+      ar: document.getElementById('dAR'),
+      cam: document.getElementById('dCam'),
+      target: document.getElementById('dTarget'),
+      model: document.getElementById('dModel'),
+      
+      set: function(el, msg, type = 'ok') {
+        const prefix = type === 'ok' ? '✅' : type === 'warn' ? '⚠️' : '❌';
+        el.innerHTML = prefix + ' ' + msg;
+      }
+    };
+
+    function log(msg, type = 'ok') {
+      console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+
+    // ==========================================
+    //  LADEPHASEN
+    // ==========================================
+
+    // 1. Seite geladen
+    document.addEventListener('DOMContentLoaded', () => {
+      debug.set(debug.status, 'Seite geladen, starte AR...');
+      log('DOM geladen');
+    });
+
+    // 2. A-Frame Szene geladen
+    const scene = document.querySelector('a-scene');
+    scene.addEventListener('loaded', () => {
+      debug.set(debug.status, 'A-Frame Szene geladen ✅');
+      debug.set(debug.ar, 'Szene bereit');
+      log('A-Frame Szene geladen');
+      
+      setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+      }, 800);
+    });
+
+    // 3. Kamera-Status prüfen
+    scene.addEventListener('camera-ready', () => {
+      debug.set(debug.cam, 'Kamera aktiv');
+      log('Kamera bereit');
+    });
+
+    // 4. MindAR spezifische Events
+    scene.addEventListener('mindar-image-ready', () => {
+      debug.set(debug.ar, 'MindAR bereit');
+      debug.set(debug.status, 'AR bereit – suche Target...');
+      log('MindAR Bilderkennung bereit');
+    });
+
+    // 5. Modell geladen
+    document.querySelector('#einsteinModel').addEventListener('model-loaded', () => {
+      debug.set(debug.model, '3D-Modell geladen ✅');
+      log('Einstein-Modell geladen');
+    });
+
+    document.querySelector('#einsteinModel').addEventListener('model-error', (err) => {
+      debug.set(debug.model, 'Modell-Fehler!', 'err');
+      log('Modell-Fehler: ' + JSON.stringify(err), 'err');
+    });
+
+    // ==========================================
+    //  TARGET ERKENNUNG
+    // ==========================================
+
+    document.querySelectorAll('[mindar-image-target]').forEach((entity, idx) => {
+      entity.addEventListener('targetFound', () => {
+        debug.set(debug.target, `Target ${idx} GEFUNDEN! 🎯`, 'ok');
+        debug.set(debug.status, '🎯 Target erkannt!', 'ok');
+        log(`Target ${idx} gefunden!`);
+      });
+      
+      entity.addEventListener('targetLost', () => {
+        debug.set(debug.target, `Target ${idx} verloren`, 'warn');
+        debug.set(debug.status, 'Suche Target...');
+        log(`Target ${idx} verloren`, 'warn');
+      });
+    });
+
+    // Fallback: Prüfe ob MindAR überhaupt startet
+    setTimeout(() => {
+      const camStatus = document.getElementById('dCam').innerHTML;
+      if (camStatus.includes('?')) {
+        debug.set(debug.cam, 'Kamera? ggf. Berechtigung fehlt', 'err');
+        debug.set(debug.status, '❌ Kamera-Zugriff prüfen!', 'err');
+      }
+    }, 5000);
+
+    // ==========================================
+    //  SPIEL-LOGIK
+    // ==========================================
+
     const questions = [
       {
-        id: 0,
-        name: "Frage 1: Lichtgeschwindigkeit",
-        question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum, mein junger Freund?“",
+        id: 0, name: "Frage 1",
+        question: "🧑‍🔬 „Was ist die Lichtgeschwindigkeit im Vakuum?“",
         answers: ["299.792.458 m/s", "150.000.000 m/s", "3.000.000 m/s", "299.792 m/s"],
         correct: 0,
-        hint: "💡 Denk an eine runde Zahl: ca. 300 Millionen m/s!"
+        hint: "💡 Ca. 300 Millionen m/s!"
       },
       {
-        id: 1,
-        name: "Frage 2: Relativität",
-        question: "🧑‍🔬 „E = mc² – aber was bedeutet das kleine m?“",
+        id: 1, name: "Frage 2",
+        question: "🧑‍🔬 „E = mc² – was bedeutet m?“",
         answers: ["Masse", "Momentum", "Magnetfeld", "Meter"],
         correct: 0,
-        hint: "💡 Die Masse eines Objekts – sie wird zu Energie!"
+        hint: "💡 Die Masse wird zu Energie!"
       },
       {
-        id: 2,
-        name: "Frage 3: Quantenphysik",
-        question: "🧑‍🔬 „Ist Licht nun Welle oder Teilchen? Was denkst du?“",
-        answers: ["Beides - Welle-Teilchen-Dualismus", "Nur Welle", "Nur Teilchen", "Weder noch"],
+        id: 2, name: "Frage 3",
+        question: "🧑‍🔬 „Welle oder Teilchen?“",
+        answers: ["Beides", "Nur Welle", "Nur Teilchen", "Weder noch"],
         correct: 0,
-        hint: "💡 Ein bisschen von beidem – das macht die Quantenphysik aus!"
+        hint: "💡 Welle-Teilchen-Dualismus!"
       }
     ];
 
     let solvedStations = new Set();
     let questionActive = false;
-    let currentStation = -1;
 
     const bubble = document.getElementById('speech-bubble');
     const stationTitle = document.getElementById('stationTitle');
@@ -208,96 +317,59 @@
     const progress = document.getElementById('progress');
     const winScreen = document.getElementById('winScreen');
     const hint = document.getElementById('hint');
-    const loading = document.getElementById('loading');
 
-    // Loading-Screen ausblenden wenn AR bereit
-    document.querySelector('a-scene').addEventListener('loaded', () => {
-      setTimeout(() => {
-        loading.style.display = 'none';
-      }, 500);
-    });
-
-    function onStationFound(stationId) {
-      if (solvedStations.has(stationId) || questionActive) return;
-      
-      currentStation = stationId;
-      const q = questions[stationId];
-      
-      stationTitle.textContent = q.name;
-      questionText.textContent = q.question;
-      answerButtons.innerHTML = '';
-      
-      q.answers.forEach((answer, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'answer-btn';
-        btn.textContent = answer;
-        btn.onclick = () => checkAnswer(idx, q);
-        answerButtons.appendChild(btn);
-      });
-      
-      bubble.style.display = 'block';
-      hint.textContent = '❓ Einstein wartet auf deine Antwort!';
-      questionActive = true;
-    }
-
-    function checkAnswer(selected, q) {
-      const buttons = answerButtons.querySelectorAll('.answer-btn');
-      
-      buttons.forEach((btn, idx) => {
-        btn.disabled = true;
-        if (idx === q.correct) btn.classList.add('correct');
-        else if (idx === selected) btn.classList.add('wrong');
-      });
-
-      if (selected === q.correct) {
-        solvedStations.add(q.id);
-        updateProgress();
-        
-        questionText.textContent = "✅ Richtig! „Ausgezeichnet!“ 🎉";
-        
-        setTimeout(() => {
-          bubble.style.display = 'none';
-          questionActive = false;
-          hint.textContent = '📱 Scanne das Target erneut für die nächste Frage!';
-          
-          if (solvedStations.size === questions.length) {
-            setTimeout(() => { winScreen.style.display = 'flex'; }, 500);
-          }
-        }, 2000);
-      } else {
-        setTimeout(() => {
-          questionText.textContent = "❌ " + q.hint;
-          setTimeout(() => {
-            bubble.style.display = 'none';
-            questionActive = false;
-            hint.textContent = '📱 Scanne das Target erneut für einen neuen Versuch!';
-            buttons.forEach(btn => { btn.disabled = false; btn.classList.remove('correct', 'wrong'); });
-          }, 3000);
-        }, 1500);
-      }
-    }
-
-    function updateProgress() {
-      progress.textContent = `🧪 Einstein Escape • ${solvedStations.size} / ${questions.length} ✅`;
-    }
-
-    // === MindAR Events ===
     document.querySelectorAll('[mindar-image-target]').forEach((entity, idx) => {
       entity.addEventListener('targetFound', () => {
-        console.log(`Target ${idx} gefunden!`);
-        onStationFound(idx);
-      });
-      entity.addEventListener('targetLost', () => {
-        console.log(`Target ${idx} verloren`);
-        if (!questionActive) {
-          hint.textContent = '📱 Scanne das Target-Bild mit deiner Kamera!';
-        }
+        if (solvedStations.has(idx) || questionActive) return;
+        
+        const q = questions[idx] || questions[0];
+        stationTitle.textContent = q.name;
+        questionText.textContent = q.question;
+        answerButtons.innerHTML = '';
+        
+        q.answers.forEach((answer, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'answer-btn';
+          btn.textContent = answer;
+          btn.onclick = () => {
+            const btns = answerButtons.querySelectorAll('.answer-btn');
+            btns.forEach(b => { b.disabled = true; });
+            if (i === q.correct) {
+              btn.classList.add('correct');
+              solvedStations.add(idx);
+              progress.textContent = `🧪 ${solvedStations.size} / ${questions.length} ✅`;
+              questionText.textContent = "✅ Richtig! 🎉";
+              setTimeout(() => {
+                bubble.style.display = 'none';
+                questionActive = false;
+                hint.textContent = '📱 Scanne das Target erneut!';
+                if (solvedStations.size === questions.length) {
+                  winScreen.style.display = 'flex';
+                }
+              }, 1500);
+            } else {
+              btn.classList.add('wrong');
+              questionText.textContent = "❌ " + q.hint;
+              setTimeout(() => {
+                bubble.style.display = 'none';
+                questionActive = false;
+                hint.textContent = '📱 Nochmal versuchen!';
+                btns.forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
+              }, 2500);
+            }
+          };
+          answerButtons.appendChild(btn);
+        });
+        
+        bubble.style.display = 'block';
+        questionActive = true;
+        hint.textContent = '❓ Frage beantworten!';
       });
     });
 
-    console.log('🧪 Physik Escape mit Einstein gestartet!');
-    console.log('📁 Modell-Pfad: ./assets/einstein/scene.gltf');
-    console.log('📁 Targets-Pfad: ./assets/targets.mind');
+    log('🧪 Debug-Version gestartet!');
+    log('📁 targets.mind in ./assets/targets.mind');
+    log('📁 Modell in ./assets/einstein/scene.gltf');
   </script>
 </body>
 </html>
