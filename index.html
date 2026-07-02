@@ -3,57 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🔦 Physik Escape: Optik & Magnete</title>
+  <title>🧲 Physik Escape: AR + QR</title>
+  
+  <!-- AR.js Bibliothek -->
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@latest/aframe/build/aframe-ar-nft.js"></script>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <!-- jsQR für QR-Scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     body { 
       font-family: 'Segoe UI', sans-serif; 
       overflow: hidden;
       background: #000;
       user-select: none;
-      -webkit-user-select: none;
     }
     
-    #container {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      display: none;
-    }
-    
-    /* START */
+    /* START Overlay */
     #startOverlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(135deg, #0a0a23 0%, #1a1a4e 50%, #0d0d3d 100%);
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #0a0a23, #1a1a4e, #0d0d3d);
       z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      color: white;
-      padding: 20px;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center; color: white; padding: 20px;
     }
     #startOverlay .logo { font-size: 4em; }
     #startOverlay h1 { font-size: 2em; color: #4fc3f7; margin: 5px 0; }
-    #startOverlay .subtitle { color: #ffd54f; font-size: 1em; }
+    #startOverlay .subtitle { color: #ffd54f; }
     #startOverlay .story {
-      background: rgba(255,255,255,0.08);
-      padding: 12px; border-radius: 12px;
-      max-width: 380px; margin: 12px auto;
-      font-size: 0.9em; line-height: 1.5; color: #ddd;
-      border-left: 3px solid #4fc3f7;
+      background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px;
+      max-width: 380px; margin: 12px auto; font-size: 0.9em; line-height: 1.5;
+      color: #ddd; border-left: 3px solid #4fc3f7;
     }
     #startBtn {
       background: #4fc3f7; color: #000; border: none;
-      padding: 16px 45px; border-radius: 50px;
-      font-size: 1.2em; font-weight: bold; cursor: pointer;
-      margin-top: 12px; transition: transform 0.2s;
+      padding: 16px 45px; border-radius: 50px; font-size: 1.2em;
+      font-weight: bold; cursor: pointer; margin-top: 12px;
+      transition: transform 0.2s;
     }
     #startBtn:hover { transform: scale(1.05); }
-    #startOverlay small { color: #666; margin-top: 12px; font-size: 0.75em; }
+    #startBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    /* MODUS-AUSWAHL */
+    #modeOverlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); z-index: 9000;
+      display: none; justify-content: center; align-items: center;
+      text-align: center; color: white; padding: 20px;
+    }
+    #modeOverlay .mode-box {
+      background: rgba(255,255,255,0.05); border: 2px solid #4fc3f7;
+      border-radius: 20px; padding: 25px; max-width: 340px; width: 100%;
+    }
+    #modeOverlay h2 { color: #4fc3f7; margin-bottom: 15px; }
+    .mode-btn {
+      background: rgba(255,255,255,0.1); color: white; border: 2px solid #4fc3f7;
+      padding: 15px 20px; border-radius: 15px; font-size: 1em;
+      cursor: pointer; margin: 8px; min-width: 140px; font-weight: bold;
+      transition: all 0.2s;
+    }
+    .mode-btn:hover { background: #4fc3f7; color: #000; transform: scale(1.05); }
+    .mode-btn .icon { font-size: 1.5em; display: block; margin-bottom: 5px; }
     
     /* HINWEIS Overlay */
     #hintOverlay {
@@ -63,9 +76,8 @@
       text-align: center; color: white; padding: 25px;
     }
     #hintOverlay .box {
-      background: rgba(255,255,255,0.05);
-      border: 2px solid #4fc3f7; border-radius: 20px;
-      padding: 25px; max-width: 380px; width: 100%;
+      background: rgba(255,255,255,0.05); border: 2px solid #4fc3f7;
+      border-radius: 20px; padding: 25px; max-width: 380px; width: 100%;
     }
     #hintOverlay .icon { font-size: 2.5em; }
     #hintOverlay h2 { color: #4fc3f7; margin: 8px 0; font-size: 1.2em; }
@@ -73,7 +85,7 @@
     #hintOverlay .next-btn {
       background: #ffd54f; color: #000; border: none;
       padding: 12px 35px; border-radius: 30px;
-      font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 15px;
+      font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 12px;
     }
     
     /* Sprachblase */
@@ -91,17 +103,10 @@
       padding: 2px 12px; border-radius: 15px;
       font-size: 0.75em; font-weight: bold; margin-bottom: 5px;
     }
-    #speech-bubble .target-icon { font-size: 1.8em; margin: 3px; }
+    #speech-bubble .target-icon { font-size: 1.8em; }
     #speech-bubble h2 { margin: 3px 0; color: #ffd54f; font-size: 1em; }
-    #speech-bubble .question-img {
-      max-width: 90%; max-height: 100px;
-      border-radius: 8px; margin: 5px auto;
-      background: rgba(255,255,255,0.1); padding: 3px;
-      display: block;
-    }
     #speech-bubble p { font-size: 0.95em; margin: 6px 0; line-height: 1.4; }
     #speech-bubble .question-text { font-size: 1em; font-weight: bold; }
-    #speech-bubble .progress-dots { margin: 4px 0; }
     #speech-bubble .progress-dots span {
       display: inline-block; width: 8px; height: 8px;
       border-radius: 50%; margin: 0 2px; background: #555;
@@ -115,10 +120,15 @@
       font-size: 0.85em; cursor: pointer; font-weight: bold;
       min-width: 60px; transition: all 0.15s;
     }
-    .answer-btn:hover { background: #29b6f6; }
     .answer-btn.correct { background: #66bb6a; }
-    .answer-btn.wrong { background: #ef5350; }
+    .answer-btn.wrong { background: #ef5350; animation: shake 0.3s; }
     .answer-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
     
     #progress {
       position: fixed; top: 10px; left: 10px;
@@ -130,25 +140,47 @@
     #hint {
       position: fixed; bottom: 10px; left: 50%;
       transform: translateX(-50%);
-      color: white; font-size: 0.75em; z-index: 30;
-      background: rgba(0,0,0,0.7); padding: 4px 12px;
-      border-radius: 15px; text-align: center; display: none;
-      pointer-events: none;
+      color: white; font-size: 0.78em; z-index: 30;
+      background: rgba(0,0,0,0.85); padding: 6px 16px;
+      border-radius: 20px; text-align: center; display: none;
+      border: 1px solid #4fc3f7; max-width: 90%;
     }
+    
+    #scanFrame {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px; height: 220px;
+      border: 3px dashed #4fc3f7; border-radius: 20px;
+      z-index: 20; pointer-events: none; display: none;
+      box-shadow: 0 0 30px rgba(79,195,247,0.2);
+    }
+    #scanFrame .label {
+      position: absolute; bottom: -35px; left: 50%;
+      transform: translateX(-50%); color: #4fc3f7;
+      font-size: 0.8em; white-space: nowrap;
+      background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 10px;
+    }
+    #scanFrame .corner {
+      position: absolute; width: 20px; height: 20px;
+      border-color: #4fc3f7; border-style: solid;
+    }
+    #scanFrame .corner.tl { top: -3px; left: -3px; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
+    #scanFrame .corner.tr { top: -3px; right: -3px; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
+    #scanFrame .corner.bl { bottom: -3px; left: -3px; border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
+    #scanFrame .corner.br { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
     
     .win-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.93); display: none;
+      background: rgba(0,0,0,0.95); display: none;
       justify-content: center; align-items: center;
       flex-direction: column; z-index: 9999;
       color: white; text-align: center; padding: 20px;
     }
     .win-screen .icon { font-size: 4em; }
     .win-screen h1 { font-size: 2.2em; color: #ffd54f; margin: 5px 0; }
-    .win-screen .sub { font-size: 1em; color: #4fc3f7; margin: 8px 0; }
     .win-screen .stats {
-      background: rgba(255,255,255,0.1);
-      padding: 12px; border-radius: 12px; margin: 12px 0;
+      background: rgba(255,255,255,0.1); padding: 12px;
+      border-radius: 12px; margin: 12px 0;
     }
     .restart-btn {
       background: #4fc3f7; color: black; border: none;
@@ -156,212 +188,245 @@
       font-size: 1.1em; cursor: pointer; font-weight: bold; margin-top: 15px;
     }
     
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 0.7; }
-      50% { transform: scale(1.1); opacity: 1; }
-      100% { transform: scale(1); opacity: 0.7; }
+    /* AR Container */
+    #arContainer {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      display: none;
     }
+    
+    /* QR-Code Scanner Container */
+    #qrContainer {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      display: none;
+    }
+    #qrContainer video, #qrContainer canvas {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 0.4; transform: scale(1); }
+    }
+    .pulse { animation: pulse 1.5s infinite; }
   </style>
 </head>
 <body>
 
-  <!-- START -->
+  <!-- START Overlay -->
   <div id="startOverlay">
     <div class="logo">🔦</div>
     <h1>Physik Escape</h1>
-    <div class="subtitle">🧲 Magnete • ⚡ Strom • 🔦 Licht • 🌈 Farben</div>
+    <div class="subtitle">mit Professor Einstein 🧑‍🔬</div>
     <div class="story">
       <strong>📖 Story:</strong><br>
-      Professor Einstein hat im Labor<br>
-      <strong>4 versteckte Targets</strong> platziert!<br>
-      Finde sie, löse die Physik-Fragen<br>
-      und schalte den Strom wieder ein! ⚡
+      Professor Einstein hat im ganzen Schulhaus<br>
+      <strong>Experimente versteckt</strong> – finde sie mit AR!<br><br>
+      🔍 Scanne Schaltungen/Aufbauten mit der Kamera<br>
+      📱 Oder nutze QR-Codes auf dem Arbeitsblatt<br>
+      💡 Löse Physik-Fragen und schalte den Strom ein! ⚡
     </div>
-    <button id="startBtn">📷 Kamera starten</button>
+    <button id="startBtn">🔬 Experiment beginnen</button>
     <small>Kamera-Zugriff erforderlich</small>
   </div>
 
-  <!-- HINWEIS -->
-  <div id="hintOverlay">
-    <div class="box">
-      <div class="icon" id="hintIcon">🧲</div>
-      <h2 id="hintTitle">Target gefunden!</h2>
-      <p id="hintText">Weiter geht's...</p>
-      <button class="next-btn" id="hintBtn">🔍 Weiter</button>
+  <!-- MODUS-AUSWAHL (nach Klick) -->
+  <div id="modeOverlay">
+    <div class="mode-box">
+      <h2>🔬 Wie willst du starten?</h2>
+      <p style="color:#aaa; font-size:0.9em; margin-bottom:15px;">
+        Wähle deinen Einstieg ins Escape Game:
+      </p>
+      <button class="mode-btn" id="modeAR">
+        <span class="icon">📸</span>
+        AR-Modus
+        <small style="display:block;font-size:0.7em;color:#888;margin-top:5px;">
+          Scanne echte Schaltungen/Aufbauten
+        </small>
+      </button>
+      <button class="mode-btn" id="modeQR">
+        <span class="icon">📱</span>
+        QR-Modus
+        <small style="display:block;font-size:0.7em;color:#888;margin-top:5px;">
+          Scanne QR-Codes auf Arbeitsblättern
+        </small>
+      </button>
     </div>
   </div>
 
-  <div id="container"></div>
-  <div id="progress">📍 0/4 • ✅ 0/16</div>
-  <div id="hint">👆 Tippe auf ein Target-Symbol!</div>
+  <!-- AR Container (A-Frame) -->
+  <div id="arContainer">
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; patternRatio: 0.5" renderer="colorManagement: true">
+      <!-- Für AR Marker: 3D Einstein + Informationen -->
+      <a-marker type="pattern" url="./assets/pattern-parallelschaltung.patt">
+        <a-entity position="0 0 0">
+          <!-- 3D Schaltungs-Overlay -->
+          <a-entity gltf-model="#schaltungModel" scale="0.15 0.15 0.15"></a-entity>
+          <!-- Einstein als 3D Figur -->
+          <a-entity position="-0.3 0.2 0" scale="0.08 0.08 0.08">
+            <a-box width="2" height="2.5" depth="1.5" color="#8B4513" position="0 -0.5 0"></a-box>
+            <a-sphere radius="1" color="#FFE4C4" position="0 1.2 0"></a-sphere>
+            <a-sphere radius="0.4" color="#DDD" position="-0.5 1.6 0.3"></a-sphere>
+            <a-sphere radius="0.4" color="#DDD" position="0.5 1.6 0.3"></a-sphere>
+            <a-sphere radius="0.15" color="#000" position="-0.3 1.2 0.8"></a-sphere>
+            <a-sphere radius="0.15" color="#000" position="0.3 1.2 0.8"></a-sphere>
+            <a-text value="🧑‍🔬" position="0 1 0" scale="3 3 3" align="center" color="#ffd54f"></a-text>
+          </a-entity>
+          <!-- Sprechblase -->
+          <a-plane position="0 0.6 0" width="0.8" height="0.4" color="#000" opacity="0.8" material="transparent: true">
+            <a-text value="Parallelschaltung! ⚡" position="0 0 0.01" align="center" width="0.7" color="#4fc3f7" font-size="0.08"></a-text>
+            <a-text value="Wie verhält sich der Strom?" position="0 -0.1 0.01" align="center" width="0.7" color="#fff" font-size="0.05"></a-text>
+          </a-plane>
+        </a-entity>
+      </a-marker>
+      
+      <a-marker type="pattern" url="./assets/pattern-optik.patt">
+        <a-entity position="0 0 0">
+          <!-- Optik-Overlay -->
+          <a-entity position="0 0.2 0">
+            <a-entity light="type: spot; angle: 30; color: #ffff00; intensity: 2" position="-0.4 0 0"></a-entity>
+            <a-box width="0.01" height="0.2" depth="0.01" color="#fff" position="0 0 0"></a-box>
+            <a-plane width="0.3" height="0.3" color="#fff" opacity="0.3" position="0.4 0 0" material="transparent: true"></a-plane>
+          </a-entity>
+          <a-text value="🔦 Optik-Aufbau!" position="0 0.5 0" align="center" width="2" color="#ffd54f" font-size="0.3"></a-text>
+        </a-entity>
+      </a-marker>
+      
+      <a-marker type="pattern" url="./assets/pattern-magnet.patt">
+        <a-entity position="0 0 0">
+          <!-- Magnetfeld-Animation -->
+          <a-entity rotation="0 0 0">
+            <a-torus radius="0.3" radius-tubular="0.01" color="#4fc3f7" opacity="0.5" animation="property: rotation; to: 0 360 0; dur: 3000; loop: true"></a-torus>
+            <a-torus radius="0.5" radius-tubular="0.01" color="#4fc3f7" opacity="0.3" animation="property: rotation; to: 0 -360 0; dur: 4000; loop: true"></a-torus>
+          </a-entity>
+          <a-text value="🧲 Magnetismus" position="0 0.4 0" align="center" width="2" color="#4fc3f7"></a-text>
+        </a-entity>
+      </a-marker>
+      
+      <a-marker type="pattern" url="./assets/pattern-farbe.patt">
+        <a-entity position="0 0 0">
+          <!-- Farb-Spektrum -->
+          <a-entity position="0 0.2 0">
+            <a-box width="0.05" height="0.2" depth="0.05" color="#ff0000" position="-0.15 0 0"></a-box>
+            <a-box width="0.05" height="0.2" depth="0.05" color="#ff8800" position="-0.08 0 0"></a-box>
+            <a-box width="0.05" height="0.2" depth="0.05" color="#ffff00" position="0 0 0"></a-box>
+            <a-box width="0.05" height="0.2" depth="0.05" color="#00ff00" position="0.08 0 0"></a-box>
+            <a-box width="0.05" height="0.2" depth="0.05" color="#0000ff" position="0.15 0 0"></a-box>
+          </a-entity>
+          <a-text value="🌈 Farben" position="0 0.4 0" align="center" width="2" color="#ffd54f"></a-text>
+        </a-entity>
+      </a-marker>
+      
+      <a-entity camera></a-entity>
+    </a-scene>
+  </div>
 
+  <!-- QR Scanner Container -->
+  <div id="qrContainer">
+    <video id="qrVideo" playsinline style="display:none;"></video>
+    <canvas id="qrCanvas"></canvas>
+  </div>
+
+  <!-- Scan-Frame für QR -->
+  <div id="scanFrame">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="label pulse">📷 QR-Code scannen</div>
+  </div>
+
+  <!-- HINWEIS Overlay -->
+  <div id="hintOverlay">
+    <div class="box">
+      <div class="icon" id="hintIcon">🧲</div>
+      <h2 id="hintTitle">Gefunden!</h2>
+      <p id="hintText">Super! Beantworte die Fragen...</p>
+      <button class="next-btn" id="hintBtn">📝 Fragen starten</button>
+    </div>
+  </div>
+
+  <!-- UI -->
+  <div id="progress">📍 0/4 • ✅ 0/16</div>
+  <div id="hint">🔬 Starte das Experiment!</div>
+
+  <!-- Sprachblase -->
   <div id="speech-bubble">
     <div class="station-badge" id="stationBadge">📍 Target 1</div>
     <div class="target-icon" id="targetIcon">🧲</div>
     <h2 id="stationTitle">Magnetismus</h2>
-    <img id="questionImage" class="question-img" style="display:none;" alt="Bild">
     <p class="question-text" id="questionText">Frage?</p>
     <div class="progress-dots" id="progressDots"></div>
     <div id="answerButtons"></div>
   </div>
-  
 
+  <!-- WIN -->
   <div class="win-screen" id="winScreen">
     <div class="icon">⚡🏆⚡</div>
     <h1>LABOR GERETTET! 🎉</h1>
-    <div class="sub">„Hervorragende Arbeit, junge Physiker!“</div>
-    <p>– Prof. Einstein</p>
+    <p style="font-size:1.1em; color:#4fc3f7;">🧑‍🔬 „Hervorragend, junge Physiker!“</p>
     <div class="stats">
-      <p>📍 <span id="winTargets">0</span> Targets</p>
+      <p>📍 <span id="winTargets">0</span> Experimente gefunden</p>
       <p>✅ <span id="winCorrect">0</span> / <span id="winTotal">16</span> richtig</p>
       <p>⏱️ <span id="winTime">0</span> min</p>
     </div>
-    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal</button>
+    <p style="color:#ffd54f; font-size:1.3em;">🎉 EUCHM EXPEERIIMENTIIEREN! 🎉</p>
+    <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
   </div>
 
   <script>
     // ==========================================
-    //  4 TARGETS MIT PHYSIK-FRAGEN (NuT 7 / Ph 8)
+    //  SPIELDATEN
     // ==========================================
     
     const gameData = {
       targets: [
-        // ===== TARGET 1: MAGNETISMUS =====
         {
-          id: 0, name: "🧲 Eingangshalle", icon: "🧲",
-          subtitle: "Magnetismus",
-          hintFound: "🧲 Super! Beantworte die Fragen zum Magnetismus.\n\nDanach geht's zum ⚡ Physiksaal!",
+          id: 0, name: "🧲 Magnetismus", icon: "🧲",
+          hintFound: "🧲 Magnetismus gefunden!\n\nFrage: Welche Pole ziehen sich an?",
           questions: [
-            {
-              question: "Welche Pole hat ein Magnet?",
-              answers: ["Nordpol & Südpol", "Plus & Minus", "Rot & Blau", "Oben & Unten"],
-              correct: 0, hint: "💡 Ein Kompass zeigt nach Norden!",
-              image: null
-            },
-            {
-              question: "Gleichnamige Pole...",
-              answers: ["stoßen sich ab", "ziehen sich an", "neutralisieren sich", "tanzen"],
-              correct: 0, hint: "💡 Nord-Nord = Abstoßung!",
-              image: null
-            },
-            {
-              question: "Was ist ein temporärer Magnet?",
-              answers: ["Wird durch Magnetfeld magnetisiert", "Ist immer magnetisch", "Kann nicht entmagnetisiert werden", "Ist aus Kunststoff"],
-              correct: 0, hint: "💡 Eine Büroklammer wird kurz zum Magneten!",
-              image: null
-            },
-            {
-              question: "Das Magnetfeld der Erde...",
-              answers: ["schützt uns vor Sonnenwind", "gibt es nicht", "ist immer gleich stark", "ist nur am Nordpol"],
-              correct: 0, hint: "💡 Dank ihm gibt es Polarlichter!",
-              image: null
-            }
+            { question: "Welche Pole ziehen sich an?", answers: ["Nord + Süd", "Nord + Nord", "Süd + Süd", "Keine"], correct: 0, hint: "💡 Gegensätze ziehen sich an!" },
+            { question: "Was ist ein temporärer Magnet?", answers: ["Wird kurz magnetisch", "Ist immer magnetisch", "Aus Holz", "Gibt es nicht"], correct: 0, hint: "💡 Büroklammer!" },
+            { question: "Das Erdmagnetfeld...", answers: ["schützt uns", "gibt es nicht", "ist überall gleich", "nur am Pol"], correct: 0, hint: "💡 Polarlichter!" },
+            { question: "Gleichnamige Pole...", answers: ["stoßen sich ab", "ziehen sich an", "tanzen", "verschwinden"], correct: 0, hint: "💡 Nord-Nord = weg!" }
           ]
         },
-        
-        // ===== TARGET 2: STROMKREISE =====
         {
-          id: 1, name: "⚡ Physiksaal", icon: "⚡",
-          subtitle: "Einfache Stromkreise",
-          hintFound: "⚡ Klasse! Fragen zu Stromkreise geschafft.\n\nWeiter zu 🔦 Optik: Licht & Schatten!",
+          id: 1, name: "⚡ Stromkreise", icon: "⚡",
+          hintFound: "⚡ Parallelschaltung erkannt!\n\nWie verhält sich der Strom?",
           questions: [
-            {
-              question: "Ein Stromkreis braucht...",
-              answers: ["eine geschlossene Leitung", "nur eine Batterie", "nur ein Kabel", "eine Unterbrechung"],
-              correct: 0, hint: "💡 Der Kreis muss GESCHLOSSEN sein!",
-              image: null
-            },
-            {
-              question: "Was ist ein Leiter?",
-              answers: ["Material, das Strom leitet", "Material, das Strom blockiert", "Ein Physiklehrer", "Ein Isolator"],
-              correct: 0, hint: "💡 Metalle leiten gut!",
-              image: null
-            },
-            {
-              question: "Eine Glühlampe leuchtet...",
-              answers: ["im geschlossenen Stromkreis", "auch ohne Batterie", "nur mit 2 Batterien", "bei offenem Kreis"],
-              correct: 0, hint: "💡 Strom muss FLIESSEN!",
-              image: null
-            },
-            {
-              question: "Welches Symbol hat eine Batterie?",
-              answers: ["Zwei Striche (+/-)", "Ein Kreis", "Ein Blitz", "Ein Dreieck"],
-              correct: 0, hint: "💡 Langer Strich = Plus, kurzer = Minus!",
-              image: null
-            }
+            { question: "Bei Parallelschaltung...", answers: ["Strom teilt sich auf", "Strom bleibt gleich", "Lampe leuchtet nicht", "Kurzschluss"], correct: 0, hint: "💡 Mehrere Wege!" },
+            { question: "Eine Sicherung dient...", answers: ["dem Schutz", "der Helligkeit", "dem Stromsparen", "nichts"], correct: 0, hint: "💡 Opferbereit!" },
+            { question: "Ein Leiter...", answers: ["leitet Strom", "blockiert Strom", "ist aus Gummi", "leitet nicht"], correct: 0, hint: "💡 Metalle!" },
+            { question: "Eine Batterie liefert...", answers: ["Spannung", "Stromstärke", "Widerstand", "Licht"], correct: 0, hint: "💡 Volt!" }
           ]
         },
-        
-        // ===== TARGET 3: OPTIK 1 (LICHT & SCHATTEN) =====
         {
-          id: 2, name: "🔦 Computerraum", icon: "🔦",
-          subtitle: "Licht & Schatten",
-          hintFound: "🔦 Großartig! Licht & Schatten verstanden.\n\nLetztes Target: 🌈 Farben in der Bibliothek!",
+          id: 2, name: "🔦 Optik", icon: "🔦",
+          hintFound: "🔦 Optik-Aufbau erkannt!\n\nWie breitet sich Licht aus?",
           questions: [
-            {
-              question: "Wie breitet sich Licht aus?",
-              answers: ["geradlinig", "im Kreis", "in Wellen nur im Wasser", "gar nicht"],
-              correct: 0, hint: "💡 Lichtstrahlen sind immer gerade!",
-              image: null
-            },
-            {
-              question: "Ein Schatten entsteht, wenn...",
-              answers: ["Licht blockiert wird", "es dunkel ist", "die Sonne scheint", "man die Augen schließt"],
-              correct: 0, hint: "💡 Ein Gegenstand steht im Weg!",
-              image: null
-            },
-            {
-              question: "Je näher eine Lichtquelle am Gegenstand...",
-              answers: ["desto größer der Schatten", "desto kleiner der Schatten", "desto heller der Schatten", "kein Schatten"],
-              correct: 0, hint: "💡 Probiere es mit einer Taschenlampe aus!",
-              image: null
-            },
-            {
-              question: "Was ist eine Lichtquelle?",
-              answers: ["Etwas, das selbst leuchtet", "Etwas, das Licht reflektiert", "Der Mond", "Ein Spiegel"],
-              correct: 0, hint: "💡 Die Sonne ja, der Mond nein!",
-              image: null
-            }
+            { question: "Licht breitet sich aus...", answers: ["geradlinig", "im Kreis", "nur im Wasser", "gar nicht"], correct: 0, hint: "💡 Gerade!" },
+            { question: "Schatten entsteht wenn...", answers: ["Licht blockiert wird", "es dunkel ist", "die Sonne scheint", "man blinzelt"], correct: 0, hint: "💡 Hindernis!" },
+            { question: "Je näher die Lichtquelle...", answers: ["desto größer der Schatten", "desto kleiner", "kein Schatten", "desto dunkler"], correct: 0, hint: "💡 Ausprobieren!" },
+            { question: "Eine Lichtquelle...", answers: ["leuchtet selbst", "reflektiert nur", "ist der Mond", "ist ein Spiegel"], correct: 0, hint: "💡 Sonne!" }
           ]
         },
-        
-        // ===== TARGET 4: OPTIK 2 (FARBEN & WAHRNEHMUNG) =====
         {
-          id: 3, name: "🌈 Bibliothek", icon: "🌈",
-          subtitle: "Farbwahrnehmung",
-          hintFound: "🌈 ALLES GESCHAFFT! 🎉\n\nDu hast alle 4 Targets gefunden\nund alle Physik-Fragen richtig beantwortet!\n\n⚡ Der Strom fließt wieder!",
+          id: 3, name: "🌈 Farben", icon: "🌈",
+          hintFound: "🌈 Farbexperiment gefunden!\n\nWelche Farben hat weißes Licht?",
           questions: [
-            {
-              question: "Welche Farben hat das Spektrum des weißen Lichts?",
-              answers: ["Rot, Orange, Gelb, Grün, Blau, Indigo, Violett", "Nur Rot und Blau", "Schwarz und Weiß", "Pink und Türkis"],
-              correct: 0, hint: "💡 Denk an einen Regenbogen!",
-              image: null
-            },
-            {
-              question: "Ein rotes Objekt erscheint rot, weil...",
-              answers: ["es rotes Licht reflektiert", "es rotes Licht absorbiert", "es alle Farben absorbiert", "es blau leuchtet"],
-              correct: 0, hint: "💡 Alles andere wird verschluckt!",
-              image: null
-            },
-            {
-              question: "Was passiert, wenn man rotes und grünes Licht mischt?",
-              answers: ["Gelbes Licht", "Blaues Licht", "Weißes Licht", "Schwarzes Licht"],
-              correct: 0, hint: "💡 Additive Farbmischung!",
-              image: null
-            },
-            {
-              question: "Ein Prisma kann weißes Licht...",
-              answers: ["in Spektralfarben zerlegen", "verstärken", "auslöschen", "einfrieren"],
-              correct: 0, hint: "💡 Wie bei einem Regenbogen!",
-              image: null
-            }
+            { question: "Weißes Licht besteht aus...", answers: ["7 Farben", "3 Farben", "2 Farben", "1 Farbe"], correct: 0, hint: "💡 Regenbogen!" },
+            { question: "Ein rotes Objekt reflektiert...", answers: ["rotes Licht", "alles außer rot", "nichts", "blaues Licht"], correct: 0, hint: "💡 Es bleibt rot!" },
+            { question: "Rot + Grün (Lichtmischung) = ?", answers: ["Gelb", "Blau", "Weiß", "Schwarz"], correct: 0, hint: "💡 Additiv!" },
+            { question: "Ein Prisma...", answers: ["zerlegt weißes Licht", "löscht Licht", "speichert Licht", "biegt Licht"], correct: 0, hint: "💡 Wie Regenbogen!" }
           ]
         }
       ]
     };
 
     // ==========================================
-    //  SPIEL-LOGIK
+    //  SPIELSTAND
     // ==========================================
 
     const state = {
@@ -371,17 +436,24 @@
       correctAnswers: 0,
       totalQuestions: 0,
       startTime: null,
-      scanActive: true,
       questionActive: false,
-      hintShowing: false
+      hintShowing: false,
+      activeMode: null, // 'ar' oder 'qr'
+      scanning: false
     };
-
     gameData.targets.forEach(t => state.totalQuestions += t.questions.length);
 
     // DOM
-    const container = document.getElementById('container');
     const startOverlay = document.getElementById('startOverlay');
     const startBtn = document.getElementById('startBtn');
+    const modeOverlay = document.getElementById('modeOverlay');
+    const modeAR = document.getElementById('modeAR');
+    const modeQR = document.getElementById('modeQR');
+    const arContainer = document.getElementById('arContainer');
+    const qrContainer = document.getElementById('qrContainer');
+    const qrVideo = document.getElementById('qrVideo');
+    const qrCanvas = document.getElementById('qrCanvas');
+    const scanFrame = document.getElementById('scanFrame');
     const hintOverlay = document.getElementById('hintOverlay');
     const hintIcon = document.getElementById('hintIcon');
     const hintTitle = document.getElementById('hintTitle');
@@ -391,7 +463,6 @@
     const stationBadge = document.getElementById('stationBadge');
     const targetIcon = document.getElementById('targetIcon');
     const stationTitle = document.getElementById('stationTitle');
-    const questionImage = document.getElementById('questionImage');
     const questionText = document.getElementById('questionText');
     const answerButtons = document.getElementById('answerButtons');
     const progressDots = document.getElementById('progressDots');
@@ -404,170 +475,160 @@
     const winTime = document.getElementById('winTime');
 
     // ==========================================
-    //  KAMERA
+    //  START
     // ==========================================
 
-    let video, canvas, ctx, animationId, stream;
+    startBtn.addEventListener('click', () => {
+      startOverlay.style.display = 'none';
+      modeOverlay.style.display = 'flex';
+    });
 
-    startBtn.addEventListener('click', async () => {
-      startBtn.disabled = true;
-      startBtn.textContent = '⏳ Starte Kamera...';
+    // ==========================================
+    //  AR-MODUS
+    // ==========================================
+
+    modeAR.addEventListener('click', () => {
+      modeOverlay.style.display = 'none';
+      state.activeMode = 'ar';
+      state.startTime = Date.now();
+      
+      arContainer.style.display = 'block';
+      progress.style.display = 'block';
+      hint.style.display = 'block';
+      hint.textContent = '📸 Scanne eines der Experimente im Schulhaus!';
+      
+      // AR.js erkennt Marker und triggert Events
+      setupARDetection();
+    });
+
+    function setupARDetection() {
+      const scene = document.querySelector('a-scene');
+      
+      // Marker Found Events für AR.js
+      document.querySelectorAll('a-marker').forEach((marker, idx) => {
+        marker.addEventListener('markerFound', () => {
+          if (!state.questionActive && !state.hintShowing && !state.solvedTargets.has(idx)) {
+            if (navigator.vibrate) navigator.vibrate(200);
+            foundTarget(idx);
+          }
+        });
+      });
+      
+      // Alternative: Custom Event Listener (falls AR.js anders feuert)
+      scene.addEventListener('markerFound', (e) => {
+        const markerId = parseInt(e.target.id?.replace('marker-', '') || '0');
+        if (!state.questionActive && !state.hintShowing && !state.solvedTargets.has(markerId)) {
+          foundTarget(markerId);
+        }
+      });
+    }
+
+    // ==========================================
+    //  QR-MODUS
+    // ==========================================
+
+    modeQR.addEventListener('click', async () => {
+      modeOverlay.style.display = 'none';
+      state.activeMode = 'qr';
+      state.startTime = Date.now();
+      
+      qrContainer.style.display = 'block';
+      scanFrame.style.display = 'block';
+      progress.style.display = 'block';
+      hint.style.display = 'block';
+      hint.textContent = '📱 Scanne einen QR-Code!';
       
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: 640, height: 480 } 
         });
         
-        video = document.createElement('video');
-        video.srcObject = stream;
-        video.setAttribute('playsinline', '');
-        await video.play();
+        qrVideo.srcObject = stream;
+        qrVideo.setAttribute('playsinline', '');
+        await qrVideo.play();
         
-        canvas = document.createElement('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover';
+        const qrCtx = qrCanvas.getContext('2d');
+        qrCanvas.width = 640;
+        qrCanvas.height = 480;
         
-        ctx = canvas.getContext('2d');
-        container.innerHTML = '';
-        container.appendChild(canvas);
+        state.scanning = true;
         
-        startOverlay.style.display = 'none';
-        container.style.display = 'block';
-        progress.style.display = 'block';
-        hint.style.display = 'block';
-        
-        state.startTime = Date.now();
-        
-        // Target-Positionen
-        const targetPositions = [
-          { x: 0.15, y: 0.25, id: 0 },
-          { x: 0.85, y: 0.15, id: 1 },
-          { x: 0.5, y: 0.35, id: 2 },
-          { x: 0.2, y: 0.65, id: 3 }
-        ];
-        const icons = ['🧲', '⚡', '🔦', '🌈'];
-        const names = ['Magnetismus', 'Stromkreise', 'Licht & Schatten', 'Farben'];
-        const colors = ['#4fc3f7', '#ffd54f', '#66bb6a', '#ff7043'];
-        
-        const render = () => {
-          ctx.save();
-          ctx.scale(-1, 1); ctx.translate(-canvas.width, 0);
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          ctx.restore();
+        const scanLoop = () => {
+          if (!state.scanning) return;
           
-          // Fortschritt
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(0, 0, canvas.width, 55);
-          ctx.fillStyle = '#4fc3f7';
-          ctx.font = 'bold 16px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText(`📍 ${state.solvedTargets.size}/4 • ✅ ${state.correctAnswers}/${state.totalQuestions}`, 15, 35);
+          qrCtx.drawImage(qrVideo, 0, 0, 640, 480);
+          const imageData = qrCtx.getImageData(0, 0, 640, 480);
+          const code = jsQR(imageData.data, 640, 480);
           
-          // Target-Buttons
-          targetPositions.forEach((pos) => {
-            const px = pos.x * canvas.width;
-            const py = pos.y * canvas.height;
-            const found = state.solvedTargets.has(pos.id);
-            
-            ctx.fillStyle = found ? 'rgba(102,187,106,0.7)' : 'rgba(0,0,0,0.6)';
-            ctx.strokeStyle = colors[pos.id];
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(px, py, 35, 0, Math.PI * 2);
-            ctx.fill(); ctx.stroke();
-            
-            ctx.font = '28px serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(found ? '✅' : icons[pos.id], px, py - 3);
-            
-            ctx.font = '10px sans-serif';
-            ctx.fillStyle = found ? '#a5d6a7' : 'white';
-            ctx.fillText(found ? 'Erledigt' : names[pos.id], px, py + 28);
-          });
-          
-          // Scan-Puls
-          if (state.scanActive && !state.questionActive && !state.hintShowing) {
-            const next = findNextTarget();
-            if (next !== null) {
-              const pos = targetPositions[next];
-              const px = pos.x * canvas.width;
-              const py = pos.y * canvas.height;
-              const pulse = 25 + 12 * Math.sin(Date.now() / 300);
-              
-              ctx.strokeStyle = '#ffd54f';
-              ctx.lineWidth = 3;
-              ctx.globalAlpha = 0.6 + 0.4 * Math.sin(Date.now() / 300);
-              ctx.beginPath();
-              ctx.arc(px, py, 35 + pulse, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.globalAlpha = 1;
-              
-              ctx.fillStyle = '#ffd54f';
-              ctx.font = '13px sans-serif';
-              ctx.textAlign = 'center';
-              ctx.fillText('👆 Tippen!', px, py + 35 + pulse + 18);
+          if (code && code.data) {
+            const target = gameData.targets.find(t => t.id === parseInt(code.data.replace('physik-escape-', '')));
+            if (target && !state.solvedTargets.has(target.id) && !state.questionActive && !state.hintShowing) {
+              if (navigator.vibrate) navigator.vibrate(200);
+              foundTarget(target.id);
             }
           }
           
-          animationId = requestAnimationFrame(render);
+          requestAnimationFrame(scanLoop);
         };
-        render();
+        scanLoop();
         
-        // Klick
-        canvas.addEventListener('click', (e) => {
-          if (state.questionActive || state.hintShowing) return;
-          const rect = canvas.getBoundingClientRect();
-          const sx = canvas.width / rect.width;
-          const sy = canvas.height / rect.height;
-          const x = (e.clientX - rect.left) * sx;
-          const y = (e.clientY - rect.top) * sy;
-          
-          targetPositions.forEach((pos) => {
-            const px = pos.x * canvas.width;
-            const py = pos.y * canvas.height;
-            if (Math.sqrt((x-px)**2 + (y-py)**2) < 40 && !state.solvedTargets.has(pos.id)) {
-              startTarget(pos.id);
-            }
-          });
-        });
-        
-        hint.textContent = '👆 Tippe auf ein Target!';
       } catch(err) {
-        alert('Fehler: ' + err.message);
-        startBtn.disabled = false;
-        startBtn.textContent = '📷 Kamera starten';
+        alert('Kamera-Fehler: ' + err.message);
+        modeOverlay.style.display = 'flex';
       }
     });
 
-    function findNextTarget() {
-      for (let i = 0; i < gameData.targets.length; i++)
-        if (!state.solvedTargets.has(i)) return i;
-      return null;
-    }
+    // ==========================================
+    //  TARGET GEFUNDEN (beide Modi)
+    // ==========================================
 
-    function startTarget(id) {
-      if (state.solvedTargets.has(id)) return;
-      state.currentTarget = id;
+    function foundTarget(targetId) {
+      state.currentTarget = targetId;
       state.currentQuestion = 0;
-      state.scanActive = false;
-      state.questionActive = false;
       
-      const t = gameData.targets[id];
+      if (state.activeMode === 'qr') {
+        state.scanning = false;
+        qrContainer.style.display = 'none';
+        scanFrame.style.display = 'none';
+      } else {
+        // AR pausieren (Marker verschwindet lassen)
+      }
+      
+      const t = gameData.targets[targetId];
       hintIcon.textContent = t.icon;
-      hintTitle.textContent = `📍 ${t.name}`;
-      hintText.textContent = t.hintFound.split('\n').join('\n');
+      hintTitle.textContent = `📍 ${t.name} gefunden!`;
+      hintText.textContent = t.hintFound;
       hintBtn.textContent = '📝 Fragen starten!';
       hintOverlay.style.display = 'flex';
       state.hintShowing = true;
     }
 
     hintBtn.addEventListener('click', () => {
+      if (hintBtn.textContent.includes('Weiter') || hintBtn.textContent.includes('scannen')) {
+        // Weiter scannen
+        hintOverlay.style.display = 'none';
+        state.hintShowing = false;
+        state.scanning = true;
+        
+        if (state.activeMode === 'qr') {
+          qrContainer.style.display = 'block';
+          scanFrame.style.display = 'block';
+          hint.textContent = '📱 Scanne den nächsten QR-Code!';
+        } else {
+          arContainer.style.display = 'block';
+          hint.textContent = '📸 Scanne das nächste Experiment!';
+        }
+        return;
+      }
+      
       hintOverlay.style.display = 'none';
       state.hintShowing = false;
       showQuestion(state.currentTarget);
     });
+
+    // ==========================================
+    //  FRAGEN (für beide Modi gleich)
+    // ==========================================
 
     function showQuestion(targetId) {
       const target = gameData.targets[targetId];
@@ -577,11 +638,8 @@
       state.questionActive = true;
       stationBadge.textContent = `📍 ${target.name}`;
       targetIcon.textContent = target.icon;
-      stationTitle.textContent = target.subtitle;
+      stationTitle.textContent = target.icon + ' ' + target.name;
       questionText.textContent = q.question;
-      
-      if (q.image) { questionImage.src = q.image; questionImage.style.display = 'block'; }
-      else { questionImage.style.display = 'none'; }
       
       progressDots.innerHTML = '';
       target.questions.forEach((_, idx) => {
@@ -600,28 +658,50 @@
         btn.onclick = () => {
           const btns = answerButtons.querySelectorAll('.answer-btn');
           btns.forEach(b => b.disabled = true);
+          
           if (i === q.correct) {
             btn.classList.add('correct');
             state.correctAnswers++;
             state.currentQuestion++;
             questionText.textContent = "✅ Richtig! 🎉";
-            if (navigator.vibrate) navigator.vibrate([100,50,200]);
+            
+            // Witzige Einstein-Reaktionen
+            const reactions = [
+              "🧑‍🔬 „Ausgezeichnet! Genau meine Meinung!“",
+              "🧑‍🔬 „Das hätte ich auch gesagt!“",
+              "🧑‍🔬 „E=mc² sagt: Du bist ein Genie!“",
+              "🧑‍🔬 „Phantasie ist wichtiger als Wissen - aber du hast beides!“",
+              "🧑‍🔬 „Ich bin schwer beeindruckt!“",
+              "🧑‍🔬 „Weiter so! Die Relativitätstheorie wartet!“"
+            ];
+            setTimeout(() => {
+              questionText.textContent = reactions[Math.floor(Math.random() * reactions.length)];
+            }, 400);
+            
+            if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
             setTimeout(() => {
               bubble.style.display = 'none';
               state.questionActive = false;
               if (state.currentQuestion >= target.questions.length)
                 finishTarget(targetId);
-              else setTimeout(() => showQuestion(targetId), 400);
-            }, 1200);
+              else setTimeout(() => showQuestion(targetId), 800);
+            }, 2500);
           } else {
             btn.classList.add('wrong');
-            questionText.textContent = "❌ " + q.hint;
+            const wrongReactions = [
+              "❌ Hmm... versuch's nochmal! 🤔",
+              "❌ Nicht ganz! Einstein wäre traurig! 😢",
+              "❌ Oje! Noch ein Versuch! 💪",
+              "❌ Das stimmt nicht... aber Übung macht den Meister! 📚"
+            ];
+            questionText.textContent = wrongReactions[Math.floor(Math.random() * wrongReactions.length)];
+            
             if (navigator.vibrate) navigator.vibrate(300);
             setTimeout(() => {
               bubble.style.display = 'none';
               state.questionActive = false;
               btns.forEach(b => { b.disabled = false; b.classList.remove('wrong'); });
-              hint.textContent = '👆 Tippe erneut auf das Target!';
+              hint.textContent = '📱 Scanne das Target erneut!';
             }, 2500);
           }
         };
@@ -632,9 +712,8 @@
       hint.textContent = '❓ Frage beantworten!';
     }
 
-    function finishTarget(id) {
-      state.solvedTargets.add(id);
-      state.scanActive = true;
+    function finishTarget(targetId) {
+      state.solvedTargets.add(targetId);
       updateProgress();
       
       if (state.solvedTargets.size >= gameData.targets.length) {
@@ -642,17 +721,15 @@
         return;
       }
       
-      const next = findNextTarget();
-      if (next !== null) {
-        const n = gameData.targets[next];
+      const next = gameData.targets.find(t => !state.solvedTargets.has(t.id));
+      if (next) {
         hintIcon.textContent = '🎯';
-        hintTitle.textContent = `✅ ${gameData.targets[id].name} geschafft!`;
-        hintText.textContent = `Finde jetzt 📍 ${n.name} (${n.subtitle}) im Schulhaus! 🔍`;
+        hintTitle.textContent = `✅ ${gameData.targets[targetId].name} geschafft!`;
+        hintText.textContent = `🧑‍🔬 „Großartig! Finde jetzt ${next.name}!"`;
         hintBtn.textContent = '🔍 Weiter suchen';
         hintOverlay.style.display = 'flex';
         state.hintShowing = true;
       }
-      hint.textContent = '👆 Tippe auf das nächste Target!';
     }
 
     function updateProgress() {
@@ -666,14 +743,42 @@
       winTotal.textContent = state.totalQuestions;
       winTime.textContent = min;
       winScreen.style.display = 'flex';
+      
+      if (state.activeMode === 'qr') {
+        qrContainer.style.display = 'none';
+        scanFrame.style.display = 'none';
+        if (qrVideo.srcObject) qrVideo.srcObject.getTracks().forEach(t => t.stop());
+      } else {
+        arContainer.style.display = 'none';
+      }
+      
       if (navigator.vibrate) navigator.vibrate([200,100,200,100,400]);
+      
+      // Konfetti-Effekt (einfach)
+      for (let i = 0; i < 30; i++) {
+        setTimeout(() => {
+          const emoji = ['🎉', '⭐', '⚡', '🧲', '🔦', '🌈', '🧑‍🔬', '🎊'][Math.floor(Math.random() * 8)];
+          const el = document.createElement('div');
+          el.textContent = emoji;
+          el.style.cssText = `position:fixed;font-size:${20+Math.random()*30}px;left:${Math.random()*100}%;top:-20px;z-index:10000;pointer-events:none;animation:fall${Math.floor(Math.random()*3)+2}s linear forwards;`;
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 4000);
+        }, i * 100);
+      }
     }
 
-    window.addEventListener('resize', () => {
-      if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    });
+    // Konfetti-Animation dynamisch hinzufügen
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fall1 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+      @keyframes fall2 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(-540deg); opacity: 0; } }
+      @keyframes fall3 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
+    `;
+    document.head.appendChild(style);
 
-    console.log('🧲 Physik Escape gestartet!', gameData.targets.length, 'Targets,', state.totalQuestions, 'Fragen');
+    console.log('🔬 Physik Escape gestartet!');
+    console.log(`📍 ${gameData.targets.length} Experimente, 📝 ${state.totalQuestions} Fragen`);
+    console.log('🧑‍🔬 Professor Einstein begleitet dich!');
   </script>
 </body>
 </html>
