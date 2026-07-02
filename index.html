@@ -2,626 +2,90 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Physik Escape - Einstein Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AR-Schaltung mit QR-Codes</title>
   
-  <!-- A-Frame Basis -->
-  <script src="./aframe.min.js"></script>
-  <!-- AR.js mit NFT (Image Tracking) Support -->
-  <script src="./aframe-ar-nft.js"></script>
-  <!-- jsQR für QR-Code Scannen -->
-  <script src="./jsQR.js"></script>
+  <!-- A-Frame und AR.js -->
+  <script src="aframe.min.js"></script>
+  <script src="aframe-ar-nft.js"></script>
   
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #000;
-      color: white;
+      margin: 0;
       overflow: hidden;
-      height: 100vh;
-      width: 100vw;
+      font-family: Arial, sans-serif;
     }
-    #arContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    #ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; pointer-events: none; }
-    #ui > * { pointer-events: auto; }
-    
-    /* Start Overlay */
-    #startOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(135deg, #0a0a23, #1a1a4e, #0d0d3d);
-      z-index: 10000; display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
-      text-align: center; color: white; padding: 20px;
+    #arContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
-    #startOverlay .logo { font-size: 4em; margin-bottom: 10px; }
-    #startOverlay h1 { font-size: 2em; color: #4fc3f7; margin-bottom: 5px; }
-    #startOverlay .subtitle { color: #ffd54f; font-size: 1em; }
-    #startOverlay .story {
-      background: rgba(255,255,255,0.08); padding: 15px;
-      border-radius: 15px; max-width: 380px; margin: 15px auto;
-      font-size: 0.9em; line-height: 1.5; color: #ddd;
-      border-left: 3px solid #4fc3f7;
+    #ui {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
     }
-    #startBtn {
-      background: #4fc3f7; color: #000; border: none;
-      padding: 16px 45px; border-radius: 50px;
-      font-size: 1.2em; font-weight: bold; cursor: pointer; margin-top: 15px;
-      transition: transform 0.2s;
-    }
-    #startBtn:hover { transform: scale(1.05); }
-    
-    #progress {
-      position: absolute; top: 15px; left: 15px;
-      background: rgba(0,0,0,0.8); padding: 8px 16px;
-      border-radius: 25px; font-size: 0.8em;
-      border: 1px solid #4fc3f7; display: none;
-    }
-    #hint {
-      position: absolute; bottom: 80px; left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.85); padding: 8px 20px;
-      border-radius: 20px; font-size: 0.85em;
-      border: 1px solid #4fc3f7; display: none;
-      text-align: center; max-width: 90%;
-    }
-    
-    /* Sprachblase */
-    #bubble {
-      position: absolute; bottom: 20px; left: 5%; width: 90%;
-      max-height: 50vh; overflow-y: auto;
-      background: rgba(0,0,0,0.92); border: 2px solid #4fc3f7;
-      border-radius: 20px; padding: 20px; display: none; text-align: center;
-    }
-    #bubble .badge {
-      display: inline-block; background: #4fc3f7; color: #000;
-      padding: 3px 12px; border-radius: 15px;
-      font-size: 0.75em; font-weight: bold; margin-bottom: 8px;
-    }
-    #bubble h2 { color: #ffd54f; margin: 5px 0; font-size: 1.1em; }
-    #bubble p { margin: 10px 0; line-height: 1.4; font-size: 0.95em; }
-    #bubble .dots { margin: 8px 0; }
-    #bubble .dots span {
-      display: inline-block; width: 10px; height: 10px;
-      border-radius: 50%; margin: 0 3px; background: #555;
-    }
-    #bubble .dots span.active { background: #4fc3f7; }
-    #bubble .dots span.done { background: #66bb6a; }
-    
-    .answer-btn {
-      background: #4fc3f7; color: #000; border: none;
-      padding: 10px 18px; margin: 4px; border-radius: 10px;
-      font-size: 0.9em; font-weight: bold; cursor: pointer;
-      min-width: 80px; transition: all 0.15s;
-    }
-    .answer-btn:hover { background: #29b6f6; }
-    .answer-btn.correct { background: #66bb6a; }
-    .answer-btn.wrong { background: #ef5350; }
-    .answer-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    #hintOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92); z-index: 5000;
-      display: none; justify-content: center; align-items: center;
-      text-align: center; color: white; padding: 25px;
-    }
-    #hintOverlay .box {
-      background: rgba(255,255,255,0.05);
-      border: 2px solid #4fc3f7; border-radius: 20px;
-      padding: 25px; max-width: 380px; width: 100%;
-    }
-    #hintOverlay .icon { font-size: 2.5em; }
-    #hintOverlay h2 { color: #4fc3f7; margin: 8px 0; }
-    #hintOverlay p { color: #ddd; line-height: 1.6; margin: 8px 0; white-space: pre-line; }
-    #hintOverlay .next-btn {
-      background: #ffd54f; color: #000; border: none;
-      padding: 12px 35px; border-radius: 30px;
-      font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 12px;
-    }
-    
-    #winScreen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.95); z-index: 9999;
-      display: none; justify-content: center; align-items: center;
-      flex-direction: column; text-align: center; color: white; padding: 20px;
-    }
-    #winScreen .icon { font-size: 4em; }
-    #winScreen h1 { font-size: 2.2em; color: #ffd54f; margin: 10px 0; }
-    #winScreen .sub { font-size: 1.1em; color: #4fc3f7; }
-    #winScreen .stats { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; margin: 15px 0; }
-    #winScreen .restart-btn {
-      background: #4fc3f7; color: #000; border: none;
-      padding: 14px 40px; border-radius: 30px;
-      font-size: 1.2em; cursor: pointer; font-weight: bold; margin-top: 20px;
-    }
-    
-    #scanFrame {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 250px; height: 250px;
-      border: 3px dashed #4fc3f7; border-radius: 20px;
-      z-index: 50; pointer-events: none; display: none;
-      box-shadow: 0 0 30px rgba(79,195,247,0.2);
-    }
-    #scanFrame .label {
-      position: absolute; bottom: -40px; left: 50%;
-      transform: translateX(-50%);
-      color: #4fc3f7; font-size: 0.8em; white-space: nowrap;
-      background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 10px;
-    }
-    
-    #qrContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; }
-    #qrContainer video, #qrContainer canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    
-    @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-    .pulse { animation: pulse 1.5s infinite; }
   </style>
 </head>
 <body>
-
-  <!-- START OVERLAY -->
-  <div id="startOverlay">
-    <div class="logo">🔬</div>
-    <h1>Physik Escape</h1>
-    <div class="subtitle">🧲 • ⚡ • 🔦 • 🌈</div>
-    <div class="story">
-      <strong>📖 Story:</strong><br>
-      Professor Einstein hat im Schulhaus<br>
-      <strong>4 Experimente versteckt</strong>!<br><br>
-      1️⃣ Scanne deine Schaltung (NFT-Bild)<br>
-      2️⃣ Scanne QR-Codes auf Arbeitsblättern<br>
-      3️⃣ Beantworte die Physik-Fragen<br>
-      4️⃣ Schalte den Strom wieder ein! ⚡
-    </div>
-    <button id="startBtn">🔍 Experiment beginnen</button>
-    <small>Kamera-Zugriff erforderlich</small>
-  </div>
-
-  <!-- AR CONTAINER -->
-  <div id="arContainer">
-    <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false;">
-      
-      <!-- NFT MARKER: DEINE SCHALTUNG -->
-      <a-nft type="nft" url="./assets/nft/schaltung" smooth="true" smoothCount="10" smoothTolerance=".01" smoothThreshold="5">
-        
-        <!-- Einstein 3D Modell -->
-        <a-entity id="einstein-model" gltf-model="./assets/gltf/scene.gltf" scale="5 5 5" position="0 0 0"></a-entity>
-        
-        <!-- Sprechblase über Einstein -->
-        <a-plane position="0 0.8 0" width="0.6" height="0.3" color="#000" opacity="0.85" material="transparent: true;" side="double">
-          <a-text value="🧑‍🔬 Klicke mich!" position="0 0 0.01" align="center" width="0.55" color="#4fc3f7" font-size="0.04"></a-text>
-        </a-plane>
-        
-        <!-- Unsichtbare Klick-Fläche -->
-        <a-box id="einstein-click" position="0 0.3 0" width="0.5" height="0.8" depth="0.5" opacity="0" class="clickable"></a-box>
-        
-      </a-nft>
-      
-      <a-entity camera></a-entity>
-      
-    </a-scene>
-  </div>
-
-  <!-- QR CONTAINER -->
-  <div id="qrContainer">
-    <video id="qrVideo" playsinline style="display:none;"></video>
-    <canvas id="qrCanvas"></canvas>
-  </div>
-
-  <!-- SCAN FRAME -->
-  <div id="scanFrame">
-    <div class="label pulse">📷 QR-Code scannen</div>
-  </div>
-
-  <!-- UI LAYER -->
   <div id="ui">
-    <div id="progress">📍 0/4 • ✅ 0/16</div>
-    <div id="hint">📸 Scanne deine Schaltung!</div>
-    
-    <!-- Sprachblase -->
-    <div id="bubble">
-      <div class="badge" id="bubbleBadge">📍 Station</div>
-      <div id="bubbleIcon" style="font-size: 2em; margin: 5px;">🧲</div>
-      <h2 id="bubbleTitle">Professor Einstein</h2>
-      <p id="bubbleText">„Willkommen im Physik-Labor!“</p>
-      <div class="dots" id="bubbleDots"></div>
-      <div id="bubbleButtons"></div>
-    </div>
-    
-    <!-- Hinweis Overlay -->
-    <div id="hintOverlay">
-      <div class="box">
-        <div class="icon" id="hintIcon">🎯</div>
-        <h2 id="hintTitle">Gefunden!</h2>
-        <p id="hintText">Super gemacht!</p>
-        <button class="next-btn" id="hintBtn">📝 Weiter</button>
-      </div>
-    </div>
-    
-    <!-- Gewinn -->
-    <div id="winScreen">
-      <div class="icon">⚡🏆⚡</div>
-      <h1>LABOR GERETTET! 🎉</h1>
-      <div class="sub">🧑‍🔬 „Hervorragend, junge Physiker!“</div>
-      <div class="stats">
-        <p>📍 <span id="winTargets">0</span>/4 Experimente</p>
-        <p>✅ <span id="winCorrect">0</span> / <span id="winTotal">16</span> richtig</p>
-      </div>
-      <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
-    </div>
+    <div>AR-Schaltung Demo</div>
+    <div>Scanne einen QR-Code oder das Schaltungsbild!</div>
   </div>
+  
+  <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
+    
+    <!-- NFT Marker für das Schaltungsbild -->
+    <a-nft type="nft" url="assets/nft/schaltung.fset" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+      <a-entity 
+        gltf-model="url(assets/gltf/scene.gltf)" 
+        scale="0.5 0.5 0.5"
+        position="0 0 0"
+        rotation="0 0 0">
+      </a-entity>
+    </a-nft>
+
+    <!-- QR-Code Marker (3x3 Matrix Codes) -->
+    <a-marker type="pattern" url="assets/patt/pattern-parallelschaltung.patt" preset="custom">
+      <a-box position="0 0.5 0" material="color: red; opacity: 0.8" text="Parallelschaltung"></a-box>
+      <a-text position="0 1.2 0" value="Parallelschaltung" color="white" align="center"></a-text>
+    </a-marker>
+
+    <a-marker type="pattern" url="assets/patt/pattern-optik.patt" preset="custom">
+      <a-box position="0 0.5 0" material="color: green; opacity: 0.8" text="Optik"></a-box>
+      <a-text position="0 1.2 0" value="Optik" color="white" align="center"></a-text>
+    </a-marker>
+
+    <a-marker type="pattern" url="assets/patt/pattern-magnet.patt" preset="custom">
+      <a-box position="0 0.5 0" material="color: blue; opacity: 0.8" text="Magnetismus"></a-box>
+      <a-text position="0 1.2 0" value="Magnetismus" color="white" align="center"></a-text>
+    </a-marker>
+
+    <a-marker type="pattern" url="assets/patt/pattern-farbe.patt" preset="custom">
+      <a-box position="0 0.5 0" material="color: yellow; opacity: 0.8" text="Farbe"></a-box>
+      <a-text position="0 1.2 0" value="Farbe" color="black" align="center"></a-text>
+    </a-marker>
+
+    <!-- Kamera -->
+    <a-entity camera></a-entity>
+  </a-scene>
 
   <script>
-    // ==========================================
-    //  SPIELDATEN
-    // ==========================================
+    // Optional: Log für Debugging
+    console.log("AR-Szene geladen. Scanne einen Marker!");
     
-    const gameData = {
-      targets: [
-        {
-          id: 0, name: "Magnetismus", icon: "🧲", qrData: "physik-escape-0",
-          hintFound: "🧲 Magnetismus gefunden!\n\nBeantworte die Fragen und finde den nächsten QR-Code!",
-          questions: [
-            { question: "Welche Pole ziehen sich an?", answers: ["Nord + Süd", "Nord + Nord", "Süd + Süd", "Keine"], correct: 0, hint: "Gegensätze!" },
-            { question: "Was ist ein temporärer Magnet?", answers: ["Büroklammer", "Kühlschrank", "Plastik", "Holz"], correct: 0, hint: "Büroklammer!" },
-            { question: "Das Erdmagnetfeld...", answers: ["schützt uns", "gibt es nicht", "ist überall gleich", "nur am Pol"], correct: 0, hint: "Polarlichter!" },
-            { question: "Gleichnamige Pole...", answers: ["stoßen ab", "ziehen an", "verschwinden", "tanzen"], correct: 0, hint: "Nord-Nord!" }
-          ]
-        },
-        {
-          id: 1, name: "Stromkreise", icon: "⚡", qrData: "physik-escape-1",
-          hintFound: "⚡ Stromkreise gefunden!\n\nWeiter zur nächsten Station!",
-          questions: [
-            { question: "Ein Stromkreis braucht...", answers: ["geschlossene Leitung", "nur Batterie", "nur Kabel", "Unterbrechung"], correct: 0, hint: "Geschlossen!" },
-            { question: "Was ist ein Leiter?", answers: ["Metalle", "Gummi", "Holz", "Plastik"], correct: 0, hint: "Metalle!" },
-            { question: "Lampe leuchtet...", answers: ["im geschlossenen Kreis", "ohne Batterie", "nie", "nur nachts"], correct: 0, hint: "Strom fließt!" },
-            { question: "Batterie Symbol?", answers: ["Zwei Striche", "Kreis", "Blitz", "Dreieck"], correct: 0, hint: "Plus/Minus!" }
-          ]
-        },
-        {
-          id: 2, name: "Optik", icon: "🔦", qrData: "physik-escape-2",
-          hintFound: "🔦 Optik gefunden!\n\nNur noch eine Station!",
-          questions: [
-            { question: "Wie breitet sich Licht aus?", answers: ["geradlinig", "im Kreis", "nur im Wasser", "gar nicht"], correct: 0, hint: "Gerade!" },
-            { question: "Schatten entsteht wenn...", answers: ["Licht blockiert wird", "es dunkel ist", "Sonne scheint", "man blinzelt"], correct: 0, hint: "Hindernis!" },
-            { question: "Je näher die Lichtquelle...", answers: ["desto größer Schatten", "desto kleiner", "kein Schatten", "desto heller"], correct: 0, hint: "Ausprobieren!" },
-            { question: "Was ist eine Lichtquelle?", answers: ["Selbstleuchtend", "Der Mond", "Ein Spiegel", "Ein Stein"], correct: 0, hint: "Sonne!" }
-          ]
-        },
-        {
-          id: 3, name: "Farben", icon: "🌈", qrData: "physik-escape-3",
-          hintFound: "🌈 Farben gefunden!\n\n🎉 ALLES GESCHAFFT!",
-          questions: [
-            { question: "Regenbogen Farben?", answers: ["7 Farben", "3 Farben", "1 Farbe", "5 Farben"], correct: 0, hint: "ROYGBIV!" },
-            { question: "Ein rotes Objekt...", answers: ["reflektiert Rot", "absorbiert Rot", "leuchtet blau", "ist unsichtbar"], correct: 0, hint: "Alles andere wird verschluckt!" },
-            { question: "Rot + Grün (Licht) = ?", answers: ["Gelb", "Blau", "Weiß", "Schwarz"], correct: 0, hint: "Additive Mischung!" },
-            { question: "Ein Prisma...", answers: ["zerlegt weißes Licht", "verstärkt", "löscht", "speichert"], correct: 0, hint: "Regenbogen!" }
-          ]
-        }
-      ]
-    };
-
-    // ==========================================
-    //  SPIEL-LOGIK
-    // ==========================================
-    
-    const state = {
-      currentTarget: -1,
-      currentQuestion: 0,
-      solvedTargets: new Set(),
-      correctAnswers: 0,
-      totalQuestions: 16,
-      startTime: null,
-      questionActive: false,
-      hintShowing: false,
-      activeMode: null,
-      scanning: false,
-      einsteinFound: false,
-      arActive: true
-    };
-
-    const startOverlay = document.getElementById('startOverlay');
-    const startBtn = document.getElementById('startBtn');
-    const arContainer = document.getElementById('arContainer');
-    const qrContainer = document.getElementById('qrContainer');
-    const qrVideo = document.getElementById('qrVideo');
-    const qrCanvas = document.getElementById('qrCanvas');
-    const scanFrame = document.getElementById('scanFrame');
-    const hintOverlay = document.getElementById('hintOverlay');
-    const hintIcon = document.getElementById('hintIcon');
-    const hintTitle = document.getElementById('hintTitle');
-    const hintText = document.getElementById('hintText');
-    const hintBtn = document.getElementById('hintBtn');
-    const bubble = document.getElementById('bubble');
-    const bubbleBadge = document.getElementById('bubbleBadge');
-    const bubbleIcon = document.getElementById('bubbleIcon');
-    const bubbleTitle = document.getElementById('bubbleTitle');
-    const bubbleText = document.getElementById('bubbleText');
-    const bubbleDots = document.getElementById('bubbleDots');
-    const bubbleButtons = document.getElementById('bubbleButtons');
-    const progress = document.getElementById('progress');
-    const hint = document.getElementById('hint');
-    const winScreen = document.getElementById('winScreen');
-    const winTargets = document.getElementById('winTargets');
-    const winCorrect = document.getElementById('winCorrect');
-    const winTotal = document.getElementById('winTotal');
-
-    // ==========================================
-    //  START
-    // ==========================================
-
-    startBtn.addEventListener('click', () => {
-      startOverlay.style.display = 'none';
-      arContainer.style.display = 'block';
-      progress.style.display = 'block';
-      hint.style.display = 'block';
-      state.startTime = Date.now();
-      hint.textContent = '📸 Scanne deine Schaltung!';
-      
-      // Einstein Klick-Event
-      setTimeout(() => {
-        const clickEl = document.getElementById('einstein-click');
-        if (clickEl) {
-          clickEl.addEventListener('click', () => {
-            if (!state.einsteinFound) {
-              state.einsteinFound = true;
-              showEinsteinDialog();
-            }
-          });
-        }
-      }, 2000);
-    });
-
-    function showEinsteinDialog() {
-      bubbleBadge.textContent = '🧑‍🔬 Professor Einstein';
-      bubbleIcon.textContent = '🧑‍🔬';
-      bubbleTitle.textContent = 'Willkommen!';
-      bubbleText.textContent = '„Hervorragend! Du hast meine Schaltung gefunden!\n\nJetzt scanne die 4 QR-Codes im Schulhaus und beantworte die Physik-Fragen. Los geht‘s!"';
-      bubbleDots.innerHTML = '';
-      bubbleButtons.innerHTML = `
-        <button class="answer-btn" onclick="startQRMode()">📱 QR-Codes scannen</button>
-      `;
-      bubble.style.display = 'block';
+    // Falls die Kamera nicht funktioniert
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Dein Browser unterstützt keine Kamera. Nutze Chrome oder Firefox!");
     }
-
-    function startQRMode() {
-      bubble.style.display = 'none';
-      state.activeMode = 'qr';
-      state.scanning = true;
-      
-      // AR ausblenden, QR anzeigen
-      arContainer.style.display = 'none';
-      qrContainer.style.display = 'block';
-      scanFrame.style.display = 'block';
-      hint.textContent = '📱 Scanne einen QR-Code!';
-      
-      startQRScanner();
-    }
-
-    // ==========================================
-    //  QR-SCANNER
-    // ==========================================
-
-    async function startQRScanner() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment', width: 640, height: 480 } 
-        });
-        
-        qrVideo.srcObject = stream;
-        qrVideo.setAttribute('playsinline', '');
-        await qrVideo.play();
-        
-        const ctx = qrCanvas.getContext('2d');
-        qrCanvas.width = 640;
-        qrCanvas.height = 480;
-        
-        const scanLoop = () => {
-          if (!state.scanning) return;
-          
-          ctx.drawImage(qrVideo, 0, 0, 640, 480);
-          const imageData = ctx.getImageData(0, 0, 640, 480);
-          const code = jsQR(imageData.data, 640, 480);
-          
-          if (code && code.data) {
-            const target = gameData.targets.find(t => t.qrData === code.data);
-            if (target && !state.solvedTargets.has(target.id) && !state.questionActive && !state.hintShowing) {
-              if (navigator.vibrate) navigator.vibrate(200);
-              foundTarget(target.id);
-            }
-          }
-          
-          requestAnimationFrame(scanLoop);
-        };
-        scanLoop();
-        
-      } catch(err) {
-        hint.textContent = '❌ Kamera-Fehler: ' + err.message;
-      }
-    }
-
-    // ==========================================
-    //  TARGET GEFUNDEN
-    // ==========================================
-
-    function foundTarget(targetId) {
-      state.currentTarget = targetId;
-      state.currentQuestion = 0;
-      state.scanning = false;
-      
-      if (qrVideo.srcObject) {
-        qrVideo.srcObject.getTracks().forEach(t => t.stop());
-      }
-      qrContainer.style.display = 'none';
-      scanFrame.style.display = 'none';
-      
-      const target = gameData.targets[targetId];
-      hintIcon.textContent = target.icon;
-      hintTitle.textContent = `📍 ${target.name} gefunden!`;
-      hintText.textContent = target.hintFound;
-      hintBtn.textContent = '📝 Fragen starten!';
-      hintOverlay.style.display = 'flex';
-      state.hintShowing = true;
-    }
-
-    hintBtn.addEventListener('click', () => {
-      if (hintBtn.textContent.includes('Weiter')) {
-        hintOverlay.style.display = 'none';
-        state.hintShowing = false;
-        state.scanning = true;
-        qrContainer.style.display = 'block';
-        scanFrame.style.display = 'block';
-        hint.textContent = '📱 Scanne den nächsten QR-Code!';
-        startQRScanner();
-        return;
-      }
-      
-      hintOverlay.style.display = 'none';
-      state.hintShowing = false;
-      showQuestion(state.currentTarget);
-    });
-
-    // ==========================================
-    //  FRAGEN
-    // ==========================================
-
-    function showQuestion(targetId) {
-      const target = gameData.targets[targetId];
-      const q = target.questions[state.currentQuestion];
-      
-      if (!q) {
-        finishTarget(targetId);
-        return;
-      }
-      
-      state.questionActive = true;
-      
-      bubbleBadge.textContent = `📍 ${target.name}`;
-      bubbleIcon.textContent = target.icon;
-      bubbleTitle.textContent = target.icon + ' ' + target.name;
-      bubbleText.textContent = q.question;
-      
-      bubbleDots.innerHTML = '';
-      target.questions.forEach((_, idx) => {
-        const dot = document.createElement('span');
-        if (idx === state.currentQuestion) dot.className = 'active';
-        else if (idx < state.currentQuestion) dot.className = 'done';
-        dot.textContent = '●';
-        bubbleDots.appendChild(dot);
-      });
-      
-      bubbleButtons.innerHTML = '';
-      q.answers.forEach((answer, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'answer-btn';
-        btn.textContent = answer;
-        btn.onclick = () => handleAnswer(btn, i, q, targetId);
-        bubbleButtons.appendChild(btn);
-      });
-      
-      bubble.style.display = 'block';
-      hint.textContent = '❓ Beantworte die Frage!';
-    }
-
-    function handleAnswer(btn, selected, q, targetId) {
-      const btns = bubbleButtons.querySelectorAll('.answer-btn');
-      btns.forEach(b => b.disabled = true);
-      
-      if (selected === q.correct) {
-        btn.classList.add('correct');
-        state.correctAnswers++;
-        state.currentQuestion++;
-        
-        const reactions = [
-          "🧑‍🔬 „Ausgezeichnet!“",
-          "🧑‍🔬 „Genau richtig!“",
-          "🧑‍🔬 „Du bist ein Genie!“",
-          "🧑‍🔬 „Weiter so!“",
-          "🧑‍🔬 „Hervorragend!“"
-        ];
-        bubbleText.textContent = "✅ Richtig! 🎉\n" + reactions[Math.floor(Math.random() * reactions.length)];
-        
-        if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
-        
-        setTimeout(() => {
-          bubble.style.display = 'none';
-          state.questionActive = false;
-          
-          if (state.currentQuestion >= gameData.targets[targetId].questions.length) {
-            finishTarget(targetId);
-          } else {
-            setTimeout(() => showQuestion(targetId), 500);
-          }
-        }, 2000);
-      } else {
-        btn.classList.add('wrong');
-        bubbleText.textContent = "❌ " + q.hint + "\n\n🧑‍🔬 „Versuche es nochmal!“";
-        if (navigator.vibrate) navigator.vibrate(300);
-        
-        setTimeout(() => {
-          bubble.style.display = 'none';
-          state.questionActive = false;
-          btns.forEach(b => { b.disabled = false; b.classList.remove('wrong'); });
-          hint.textContent = '📱 Scanne den QR-Code erneut!';
-        }, 2500);
-      }
-    }
-
-    function finishTarget(targetId) {
-      state.solvedTargets.add(targetId);
-      updateProgress();
-      
-      if (state.solvedTargets.size >= gameData.targets.length) {
-        showWinScreen();
-        return;
-      }
-      
-      hintIcon.textContent = '🎯';
-      hintTitle.textContent = `✅ ${gameData.targets[targetId].name} geschafft!`;
-      hintText.textContent = `🧑‍🔬 „Großartig! Finde den nächsten QR-Code!“`;
-      hintBtn.textContent = '🔍 Weiter scannen';
-      hintOverlay.style.display = 'flex';
-      state.hintShowing = true;
-    }
-
-    function updateProgress() {
-      progress.textContent = `📍 ${state.solvedTargets.size}/4 • ✅ ${state.correctAnswers}/${state.totalQuestions}`;
-    }
-
-    function showWinScreen() {
-      winTargets.textContent = state.solvedTargets.size;
-      winCorrect.textContent = state.correctAnswers;
-      winTotal.textContent = state.totalQuestions;
-      
-      bubble.style.display = 'none';
-      hintOverlay.style.display = 'none';
-      winScreen.style.display = 'flex';
-      
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-      
-      // Konfetti
-      for (let i = 0; i < 20; i++) {
-        setTimeout(() => {
-          const emoji = ['🎉', '⭐', '⚡', '🧲', '🔦', '🌈', '🧑‍🔬'][Math.floor(Math.random() * 7)];
-          const el = document.createElement('div');
-          el.textContent = emoji;
-          el.style.cssText = `position:fixed;font-size:${20+Math.random()*20}px;left:${Math.random()*100}%;top:-20px;z-index:10001;pointer-events:none;animation:fall${Math.floor(Math.random()*2)+2}s linear forwards;`;
-          document.body.appendChild(el);
-          setTimeout(() => el.remove(), 4000);
-        }, i * 150);
-      }
-    }
-
-    // Konfetti-Animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes fall0 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
-      @keyframes fall1 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(-540deg); opacity: 0; } }
-      @keyframes fall2 { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
-    `;
-    document.head.appendChild(style);
-
-    console.log('🔬 Physik Escape gestartet!');
   </script>
 </body>
 </html>
