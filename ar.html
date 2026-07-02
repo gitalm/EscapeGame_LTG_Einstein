@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AR — Aufbauprüfung</title>
+  <link rel="stylesheet" href="vendor/katex.min.css">
+  <style>
+    body, html { height:100%; margin:0; font-family: Arial, Helvetica, sans-serif; }
+    #ui { position: absolute; z-index: 2000; left:12px; top:12px; background: rgba(0,0,0,0.4); color:#fff; padding:8px; border-radius:8px; }
+    #ui button { margin-right:8px; padding:8px 10px; border-radius:6px; border:none; cursor:pointer; }
+    #ui .btn-primary{ background:#0b84ff; color:#fff; }
+    #locked { position: absolute; z-index: 2001; left:50%; top:20%; transform: translateX(-50%); background:#fff; color:#111; padding:14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.12); max-width:360px; }
+    a-scene { position: absolute; left:0; top:0; width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <button id="back" class="btn-primary">Zurück</button>
+    <span id="status">initialisiert...</span>
+  </div>
+
+  <div id="locked" style="display:none;">
+    <h3 id="lockedTitle">Sperre</h3>
+    <p id="lockedMsg">Dieses AR‑Prüfmodul ist noch nicht freigeschaltet.</p>
+    <div style="margin-top:8px;">
+      <a id="toQuiz" class="btn-primary" href="#">Quiz öffnen</a>
+      <a id="toIndex" style="margin-left:8px; padding:8px 10px; background:#eee; color:#111; text-decoration:none; border-radius:6px;" href="index.html">Übersicht</a>
+    </div>
+  </div>
+
+  <!-- A-Frame Szene wird dynamisch geladen, Script tags eingefügt -->
+  <a-scene id="scene" embedded mindar-image="autoStart: false" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <a-camera position="0 0 0"></a-camera>
+    <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
+      <a-gltf-model id="model" src="" position="0 0 0" rotation="0 0 0" scale="0 0 0" visible="false"></a-gltf-model>
+      <a-entity id="tip" position="0 -0.6 0.05" visible="false">
+        <a-plane color="#000" opacity="0.7" width="1.6" height="0.32"></a-plane>
+        <a-entity id="tipText" text="value: ; color: #fff; align: center; width: 1.4" position="0 0 0.01"></a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script src="js/utils.js"></script>
+  <script>
+    (async function(){
+      const topicId = utils.getParam('topic') || '';
+      const statusEl = document.getElementById('status');
+      const backBtn = document.getElementById('back');
+      const lockedBox = document.getElementById('locked');
+      const toQuiz = document.getElementById('toQuiz');
+
+      backBtn.addEventListener('click', async () => {
+        // stop MindAR if running
+        try {
+          const sys = document.querySelector('a-scene').systems['mindar-image-system'];
+          if (sys && sys.stop) await sys.stop();
+        } catch(e){}
+        window.location.href = 'index.html';
+      });
+
+      if (!topicId){
+        statusEl.textContent = 'Kein Thema';
+        return;
+      }
+
+      let tasks;
+      try { tasks = await utils.loadJSON('data/tasks.json'); } catch(e){ statusEl.textContent = 'Fehler tasks.json'; console.error(e); return; }
+      const topic = tasks.topics.find(t => t.id === topicId);
+      if (!topic){ statusEl.textContent = 'Thema nicht gefunden'; return; }
+
+      toQuiz.href = 'quiz.html?topic=' + encodeURIComponent(topicId);
+
+      const required = topic.unlock && topic.unlock.requiredCorrect;
+      if (!utils.isUnlocked(topicId, required)){
+        // locked UI
+        document.getElementById('lockedTitle').textContent = 'AR gesperrt';
+        document.getElementById('lockedMsg').textContent = 'Bitte löse zuerst das Quiz, um den Aufbau prüfen zu können.';
+        lockedBox.style.display = 'block';
+        statusEl.textContent = 'gesperrt';
+        return;
+      }
+
+      // unlocked -> initialize AR
+      lockedBox.style.display = 'none';
+      statusEl.textContent = 'lade AR...';
+      // ensure audio unlocked on user gesture (we can prompt)
+      utils.unlockAudio();
+
+      // Dynamically load A-Frame and MindAR (versuche vendor/ -> root -> CDN)
+      await loadScriptPrefer(['vendor/aframe.min.js', 'aframe.min.js', 'https://cdn.jsdelivr.net/npm/aframe@1.4.1/dist/aframe.min.js']);
+      // MindAR as script
+      await loadScriptPrefer(['vendor/mindar-image-aframe.prod.js', 'mindar-image-aframe.prod.js', 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js']);
+
+      const scene = document.getElementById('scene');
+      // set target source (lokaler Pfad)
+      scene.setAttribute('mindar-image', 'imageTargetSrc: assets/targets.mind; maxTrack: 1;');
+      const targetEntity = document.getElementById('targetEntity');
+      targetEntity.setAttribute('mindar-image-target', 'targetIndex: ' + (topic.mindar && topic.mindar.targetIndex || 0));
+      const model = document.getElementById('model');
+      const modelSrc = (topic.mindar && topic.mindar.model) || 'assets/gltf/scene.gltf';
+      model.setAttribute('src', modelSrc);
+
+      // wait for system
+      try {
+        const sys = await waitForMindarSystem();
+        await sys.start();
+        statusEl.textContent = 'scanne Target';
+      } catch(e){
+        console.error(e);
+        statusEl.textContent = 'AR konnte nicht gestartet werden';
+        return;
+      }
+
+      // model handlers
+      model.addEventListener('model-loaded', () => {
+        // compute and set reasonable scale if possible (uses THREE from A-Frame)
+        try {
+          const threeObj = model.getObject3D('mesh') || model.getObject3D('model') || model.getObject3D('scene');
+          if (threeObj){
+            const box = new THREE.Box3().setFromObject(threeObj);
+            const size = new THREE.Vector3(); box.getSize(size);
+            const modelHeight = size.y > 0.001 ? size.y : Math.max(size.x, size.z);
+            if (modelHeight > 0) {
+              const desired = 0.6; // meters
+              const f = desired / modelHeight;
+              model.setAttribute('scale', `${f} ${f} ${f}`);
+            } else {
+              model.setAttribute('scale', '0.4 0.4 0.4');
+            }
+          }
+        } catch(e){}
+      });
+
+      targetEntity.addEventListener('targetFound', () => {
+        model.setAttribute('visible', 'true');
+        model.removeAttribute('animation__scale');
+        model.setAttribute('animation__scale', 'property: scale; from: 0 0 0; to: ' + model.getAttribute('scale') + '; dur: 600; easing: easeOutCubic');
+        // show assignment text
+        const tip = document.getElementById('tip');
+        const tipText = document.getElementById('tipText');
+        tipText.setAttribute('text', 'value', topic.assignment);
+        tip.setAttribute('visible', 'true');
+        utils.speakText(topic.assignment);
+      });
+
+      targetEntity.addEventListener('targetLost', () => {
+        model.setAttribute('visible', 'false');
+        model.setAttribute('scale', '0 0 0');
+        const tip = document.getElementById('tip');
+        tip.setAttribute('visible', 'false');
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      });
+
+      // helper functions
+      function loadScriptPrefer(list){
+        return new Promise((resolve, reject) => {
+          let idx = 0;
+          function attempt(){
+            if (idx >= list.length) return reject(new Error('Skript konnte nicht geladen werden'));
+            const src = list[idx++];
+            const s = document.createElement('script');
+            s.src = src;
+            s.defer = true;
+            s.onload = () => resolve(src);
+            s.onerror = () => attempt();
+            document.head.appendChild(s);
+          }
+          attempt();
+        });
+      }
+
+      function waitForMindarSystem(timeout = 6000){
+        return new Promise((resolve, reject) => {
+          const start = Date.now();
+          (function check(){
+            const sys = scene && scene.systems ? scene.systems['mindar-image-system'] : null;
+            if (sys) return resolve(sys);
+            if (Date.now() - start > timeout) return reject(new Error('MindAR system nicht verfügbar'));
+            setTimeout(check, 100);
+          })();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

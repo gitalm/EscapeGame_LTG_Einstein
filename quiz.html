@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz</title>
+  <link rel="stylesheet" href="vendor/katex.min.css">
+  <style>
+    body{ font-family: Arial, Helvetica, sans-serif; margin:18px; background:#f6f7fb; color:#111; }
+    .card{ background:#fff; padding:14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:12px; }
+    .option{ display:block; padding:10px; margin:8px 0; border-radius:8px; background:#f0f3ff; cursor:pointer; }
+    .btn{ display:inline-block; padding:10px 14px; border-radius:8px; background:#0b84ff; color:#fff; text-decoration:none; border:none; cursor:pointer; }
+    .btn.secondary{ background:#eee; color:#111; margin-left:8px; }
+  </style>
+</head>
+<body>
+  <div id="wrap"></div>
+
+  <script src="js/utils.js"></script>
+  <script src="vendor/katex.min.js" defer></script>
+  <script src="vendor/auto-render.min.js" defer></script>
+  <script>
+    (async function(){
+      const topicId = utils.getParam('topic') || '';
+      const wrap = document.getElementById('wrap');
+      if (!topicId){
+        wrap.innerHTML = '<div class="card">Kein Thema angegeben.</div>';
+        return;
+      }
+      let tasks;
+      try { tasks = await utils.loadJSON('data/tasks.json'); } catch(e) {
+        wrap.innerHTML = '<div class="card">Fehler beim Laden von tasks.json</div>'; console.error(e); return;
+      }
+      const topic = tasks.topics.find(tt => tt.id === topicId);
+      if (!topic){ wrap.innerHTML = '<div class="card">Thema nicht gefunden.</div>'; return; }
+
+      // load questions
+      let questions;
+      try {
+        questions = await utils.loadJSON(topic.questionsFile);
+      } catch(e){
+        wrap.innerHTML = '<div class="card">Fragen konnten nicht geladen werden.</div>'; console.error(e); return;
+      }
+
+      let current = 0;
+      const answers = Array(questions.length).fill(null);
+      let audioPrimed = false;
+
+      function renderMath(el){
+        if (window.renderMathInElement) {
+          try {
+            renderMathInElement(el, {
+              delimiters: [{left:'$$', right:'$$', display:true},{left:'$', right:'$', display:false}],
+              throwOnError: false
+            });
+          } catch(e){}
+        }
+      }
+
+      function renderQuestion(){
+        const q = questions[current];
+        const pct = Math.round(100 * (answers.filter(a=>a!==null).length) / questions.length);
+        const html = document.createElement('div');
+        html.className = 'card';
+        html.innerHTML = `<h3>${topic.title} — Frage ${current+1}/${questions.length}</h3>
+                          <p>${q.question}</p>
+                          <div id="opts"></div>
+                          <div style="margin-top:10px;">
+                            <button id="prev" class="btn secondary">Zurück</button>
+                            ${current < questions.length-1 ? '<button id="next" class="btn">Weiter</button>' : '<button id="submit" class="btn">Abschicken</button>'}
+                          </div>
+                          <p class="small" style="margin-top:8px">Fortschritt: ${pct}% beantwortet</p>`;
+        wrap.innerHTML = '';
+        wrap.appendChild(html);
+        const opts = document.getElementById('opts');
+        q.options.forEach((opt, idx) => {
+          const label = document.createElement('label');
+          label.className = 'option';
+          const checked = answers[current] === idx ? 'checked' : '';
+          label.innerHTML = `<input type="radio" name="opt" value="${idx}" ${checked} style="margin-right:8px"> ${opt}`;
+          label.addEventListener('click', () => {
+            answers[current] = idx;
+            if (!audioPrimed){
+              utils.unlockAudio();
+              audioPrimed = true;
+            }
+            // update radio checked states
+            const radios = opts.querySelectorAll('input[type=radio]');
+            radios.forEach(r => r.checked = (r.value == idx));
+          });
+          opts.appendChild(label);
+        });
+        renderMath(html);
+
+        const prev = document.getElementById('prev');
+        if (prev) prev.addEventListener('click', () => { if (current>0) { current--; renderQuestion(); } });
+        const next = document.getElementById('next');
+        if (next) next.addEventListener('click', () => { if (current < questions.length-1){ current++; renderQuestion(); } });
+        const submit = document.getElementById('submit');
+        if (submit) submit.addEventListener('click', onSubmit);
+      }
+
+      function onSubmit(){
+        let correct = 0;
+        for (let i=0;i<questions.length;i++){
+          if (answers[i] === questions[i].answer) correct++;
+        }
+        const score = questions.length ? (correct / questions.length) : 0;
+        utils.setUnlocked(topicId, score);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h3>Ergebnis</h3>
+                          <p>Richtig: ${correct} / ${questions.length} (${Math.round(score*100)} %)</p>
+                          <p><strong>Auftrag:</strong> ${topic.assignment}</p>
+                          <div style="margin-top:10px;">
+                            <a class="btn" href="ar.html?topic=${encodeURIComponent(topicId)}">Aufbau prüfen (AR)</a>
+                            <a class="btn secondary" href="index.html">Zur Übersicht</a>
+                          </div>`;
+        wrap.innerHTML = '';
+        wrap.appendChild(card);
+        renderMath(card);
+      }
+
+      // Start
+      const header = document.createElement('div');
+      header.className = 'card';
+      header.innerHTML = `<h2 style="margin-top:0">${topic.title}</h2><p class="small">${topic.description}</p>`;
+      wrap.appendChild(header);
+      renderQuestion();
+    })();
+  </script>
+</body>
+</html>
