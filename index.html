@@ -1,132 +1,58 @@
 <!doctype html>
-<html lang="de">
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>MindAR Debug / Start</title>
-  <style>
-    body{margin:0;background:#000;color:#fff;font-family:Arial;}
-    #ui{position:fixed;left:12px;top:12px;z-index:200;background:rgba(0,0,0,0.6);padding:12px;border-radius:8px;}
-    #status{margin-top:6px;color:#ffd54f;}
-    button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;}
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MindAR Minimal Test</title>
+  <style>body{margin:0;background:#000;color:#fff;font-family:Arial}#ui{position:fixed;left:10px;top:10px;z-index:100}</style>
 </head>
 <body>
   <div id="ui">
-    <div><strong>MindAR Debug Start</strong></div>
-    <div id="status">Warte auf Start...</div>
-    <div style="margin-top:8px;">
-      <button id="startBtn" style="background:#2196f3;color:#fff;">Start AR (Kamera erlauben)</button>
-      <button id="checkBtn" style="margin-left:8px;background:#607d8b;color:#fff;">Netzwerk prüfen</button>
-    </div>
-    <div style="font-size:13px;margin-top:8px;">Stelle sicher: Seite über HTTPS / localhost, targets.mind & glTF verfügbar.</div>
+    <button id="startBtn">Start AR (Kamera)</button>
+    <div id="status">Warte...</div>
   </div>
 
-  <!-- A-Frame zuerst -->
+  <!-- A-Frame (einmal) -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <!-- MindAR (image tracker for A-Frame) -->
+  <!-- MindAR (nach A-Frame) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image-aframe.prod.js"></script>
 
-  <a-scene
-    mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 3;"
-    embedded
-    renderer="antialias: true; colorManagement: true;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-
+  <a-scene mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 3;" embedded vr-mode-ui="enabled:false" device-orientation-permission-ui="enabled:false">
     <a-assets>
-      <!-- WICHTIG: id muss exakt mit gltf-model="#einModel" übereinstimmen -->
       <a-asset-item id="einModel" src="assets/gltf/scene.gltf"></a-asset-item>
     </a-assets>
 
-    <!-- MindAR Targets: indices müssen zur Reihenfolge in targets.mind passen -->
+    <!-- Test: ein target mit glTF als Kind -->
     <a-entity id="target-0" mindar-image-target="targetIndex: 0">
-      <a-entity gltf-model="#einModel" scale="0.02 0.02 0.02" rotation="0 180 0" position="0 0 0"></a-entity>
+      <a-entity gltf-model="#einModel" scale="0.02 0.02 0.02" rotation="0 180 0"></a-entity>
     </a-entity>
 
-    <a-entity id="target-1" mindar-image-target="targetIndex: 1">
-      <a-entity gltf-model="#einModel" scale="0.02 0.02 0.02" rotation="0 180 0" position="0 0 0"></a-entity>
-    </a-entity>
-
-    <a-entity id="target-2" mindar-image-target="targetIndex: 2">
-      <a-entity gltf-model="#einModel" scale="0.02 0.02 0.02" rotation="0 180 0" position="0 0 0"></a-entity>
-    </a-entity>
-
+    <!-- Kamera -->
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-  const statusEl = document.getElementById('status');
-  const startBtn = document.getElementById('startBtn');
-  const checkBtn = document.getElementById('checkBtn');
-
-  // Utility: prüfe, ob Assets erreichbar sind (Network-Check über fetch)
-  async function checkAssets() {
-    const urls = [
-      'assets/nft_input/targets.mind',
-      'assets/gltf/scene.gltf',
-      'assets/gltf/scene.bin'
-    ];
-    let ok = true;
-    for (const u of urls) {
-      try {
-        const r = await fetch(u, {method:'HEAD'});
-        console.log(u, r.status);
-        if (!r.ok) {
-          console.warn('Asset nicht erreichbar:', u, r.status);
-          ok = false;
-        }
-      } catch (e) {
-        console.error('Fehler beim Abrufen', u, e);
-        ok = false;
-      }
-    }
-    statusEl.textContent = ok ? 'Assets erreichbar (Network-OK)' : 'Fehler: Mindestens ein Asset fehlt oder ist 404 — siehe Konsole';
-  }
-
-  checkBtn.addEventListener('click', checkAssets);
-
-  // Starte MindAR erst nach Nutzeraktion -> vermeidet Autoplay-Block
-  startBtn.addEventListener('click', async () => {
-    statusEl.textContent = 'Starte AR — erlaube Kamera im Popup...';
-    try {
-      // a-scene System referenzieren
+    const status = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    startBtn.addEventListener('click', async () => {
+      status.textContent = 'Starte...';
       const scene = document.querySelector('a-scene');
-      // Warte bis MindAR System existiert
-      const wait = (ms)=> new Promise(r=>setTimeout(r,ms));
-      let sys = scene ? scene.systems['mindar-image-system'] : null;
+      // warte kurz, bis system verfügbar ist
+      let sys = scene && scene.systems && scene.systems['mindar-image-system'];
       let tries = 0;
-      while(!sys && tries < 50) { await wait(100); sys = scene.systems && scene.systems['mindar-image-system']; tries++; }
-      if (!sys) {
-        throw new Error('MindAR System nicht gefunden. Script-Reihenfolge prüfen.');
+      while (!sys && tries++ < 50) {
+        await new Promise(r => setTimeout(r, 100));
+        sys = scene.systems && scene.systems['mindar-image-system'];
       }
-
-      // MindAR starten
-      await sys.start(); // fordert Kamera-Zugriff an
-      // nun sollte Video starten; renderstart event kommt wenn alles läuft
-      scene.addEventListener('renderstart', ()=> {
-        console.log('renderstart event: AR läuft');
-        statusEl.textContent = 'AR läuft — Target scannen.';
-      });
-
-      // hilfreiche Eventlistener für debugging
-      scene.addEventListener('targetFound', (e) => { console.log('targetFound', e); statusEl.textContent = 'Target erkannt'; });
-      scene.addEventListener('targetLost', (e) => { console.log('targetLost', e); statusEl.textContent = 'Target verloren'; });
-
-    } catch (err) {
-      console.error('Startfehler:', err);
-      statusEl.textContent = 'Fehler beim Start: ' + (err.message || err);
-      alert('Fehler beim Starten von AR:\n' + (err.message || err));
-    }
-  });
-
-  // Debug-Tipp: fange Fehler global
-  window.addEventListener('error', (ev) => {
-    console.error('Window error:', ev.error || ev.message, ev);
-  });
-  window.addEventListener('unhandledrejection', (ev) => {
-    console.error('Unhandled promise rejection:', ev.reason);
-  });
+      if (!sys) { status.textContent = 'MindAR System nicht gefunden'; console.error('MindAR system fehlt'); return; }
+      try {
+        await sys.start(); // fordert Kamera an
+        status.textContent = 'AR läuft. Scanne Target.';
+        scene.addEventListener('renderstart', () => { console.log('renderstart'); });
+      } catch (e) {
+        console.error(e); status.textContent = 'Startfehler: ' + e.message;
+      }
+    });
   </script>
 </body>
 </html>
