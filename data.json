@@ -1,39 +1,39 @@
 {
   "targets": [
     {
-      "id": 0, "name": "Magnetismus", "icon": "🧲", "qrData": "physik-escape-0",
+      "id": 0, "name": "Magnetismus", "icon": "🧲",
       "questions": [
-        { "question": "Welche Pole ziehen sich an?", "answers": ["Nord + Süd", "Nord + Nord", "Süd + Süd"], "correct": 0, "hint": "Gegensätze!" },
-        { "question": "Was ist ein temporärer Magnet?", "answers": ["Büroklammer", "Kühlschrank", "Plastik"], "correct": 0, "hint": "Büroklammer!" },
-        { "question": "Das Erdmagnetfeld...", "answers": ["schützt uns", "gibt es nicht", "ist gleich", "nur am Pol"], "correct": 0, "hint": "Polarlichter!" },
-        { "question": "Gleichnamige Pole...", "answers": ["stoßen ab", "ziehen an", "tanzen"], "correct": 0, "hint": "Nord-Nord = weg!" }
+        { "question": "Pole?", "answers": ["Nord/Süd", "Plus/Minus"], "correct": 0, "hint": "Gegensätze!" },
+        { "question": "Temporär?", "answers": ["Büroklammer", "Plastik"], "correct": 0, "hint": "Büroklammer!" },
+        { "question": "Erde?", "answers": ["schützt", "gibt es nicht"], "correct": 0, "hint": "Polarlichter!" },
+        { "question": "Gleichnamig?", "answers": ["abstoßen", "anziehen"], "correct": 0, "hint": "Nord-Nord!" }
       ]
     },
     {
-      "id": 1, "name": "Stromkreise", "icon": "⚡", "qrData": "physik-escape-1",
+      "id": 1, "name": "Stromkreise", "icon": "⚡",
       "questions": [
-        { "question": "Ein Stromkreis braucht...", "answers": ["geschlossene Leitung", "nur Batterie", "nur Kabel"], "correct": 0, "hint": "Geschlossen = Strom fließt!" },
-        { "question": "Was ist ein Leiter?", "answers": ["Metalle", "Gummi", "Holz"], "correct": 0, "hint": "Metalle leiten gut!" },
-        { "question": "Lampe leuchtet...", "answers": ["im geschlossenen Kreis", "ohne Batterie", "nur ohne Kabel"], "correct": 0, "hint": "Strom muss fließen!" },
-        { "question": "Symbol Batterie?", "answers": ["Zwei Striche (+/-)", "Kreis", "Blitz"], "correct": 0, "hint": "Langer Strich = Plus!" }
+        { "question": "Stromkreis braucht?", "answers": ["Schluss", "Unterbrechung"], "correct": 0, "hint": "Geschlossen!" },
+        { "question": "Leiter?", "answers": ["Metall", "Gummi"], "correct": 0, "hint": "Leitfähigkeit!" },
+        { "question": "Leuchtet?", "answers": ["Geschlossen", "Offen"], "correct": 0, "hint": "Fließen!" },
+        { "question": "Batterie?", "answers": ["Spannung", "Widerstand"], "correct": 0, "hint": "Volt!" }
       ]
     },
     {
-      "id": 2, "name": "Optik", "icon": "🔦", "qrData": "physik-escape-2",
+      "id": 2, "name": "Optik", "icon": "🔦",
       "questions": [
-        { "question": "Wie breitet sich Licht aus?", "answers": ["geradlinig", "im Kreis", "nur im Wasser"], "correct": 0, "hint": "Gerade!" },
-        { "question": "Schatten entsteht wenn...", "answers": ["Licht blockiert wird", "es dunkel ist", "die Sonne scheint"], "correct": 0, "hint": "Hindernis!" },
-        { "question": "Je näher die Lichtquelle...", "answers": ["desto größer der Schatten", "desto kleiner", "desto heller"], "correct": 0, "hint": "Ausprobieren!" },
-        { "question": "Was ist eine Lichtquelle?", "answers": ["Etwas das selbst leuchtet", "der Mond", "ein Spiegel"], "correct": 0, "hint": "Sonne ja, Mond nein!" }
+        { "question": "Licht ausbreitung?", "answers": ["geradlinig", "Welle"], "correct": 0, "hint": "Strahl!" },
+        { "question": "Schatten?", "answers": ["Hindernis", "Dunkelheit"], "correct": 0, "hint": "Sonne!" },
+        { "question": "Nähe?", "answers": ["größer", "kleiner"], "correct": 0, "hint": "Taschenlampe!" },
+        { "question": "Quelle?", "answers": ["selbstleuchtend", "Spiegel"], "correct": 0, "hint": "Sonne!" }
       ]
     },
     {
-      "id": 3, "name": "Farben", "icon": "🌈", "qrData": "physik-escape-3",
+      "id": 3, "name": "Farben", "icon": "🌈",
       "questions": [
-        { "question": "Farben des Regenbogens?", "answers": ["7 Farben", "3 Farben", "1 Farbe"], "correct": 0, "hint": "ROYGBIV!" },
-        { "question": "Ein rotes Objekt...", "answers": ["reflektiert Rot", "absorbiert Rot", "leuchtet blau"], "correct": 0, "hint": "Alles andere wird verschluckt!" },
-        { "question": "Rot + Grün (Licht) = ?", "answers": ["Gelb", "Blau", "Weiß"], "correct": 0, "hint": "Additive Mischung!" },
-        { "question": "Ein Prisma...", "answers": ["zerlegt weißes Licht", "verstärkt", "löscht"], "correct": 0, "hint": "Wie Regenbogen!" }
+        { "question": "Regenbogen?", "answers": ["7 Farben", "1 Farbe"], "correct": 0, "hint": "Spektrum!" },
+        { "question": "Rot?", "answers": ["reflektiert", "absorbiert"], "correct": 0, "hint": "Rot bleibt!" },
+        { "question": "Mischung?", "answers": ["Gelb", "Blau"], "correct": 0, "hint": "Additive!" },
+        { "question": "Prisma?", "answers": ["zerlegt", "speichert"], "correct": 0, "hint": "Regenbogen!" }
       ]
     }
   ]
