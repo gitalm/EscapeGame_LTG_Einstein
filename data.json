@@ -1,0 +1,40 @@
+{
+  "targets": [
+    {
+      "id": 0, "name": "Magnetismus", "icon": "🧲", "qrData": "physik-escape-0",
+      "questions": [
+        { "question": "Welche Pole ziehen sich an?", "answers": ["Nord + Süd", "Nord + Nord", "Süd + Süd"], "correct": 0, "hint": "Gegensätze!" },
+        { "question": "Was ist ein temporärer Magnet?", "answers": ["Büroklammer", "Kühlschrank", "Plastik"], "correct": 0, "hint": "Büroklammer!" },
+        { "question": "Das Erdmagnetfeld...", "answers": ["schützt uns", "gibt es nicht", "ist gleich", "nur am Pol"], "correct": 0, "hint": "Polarlichter!" },
+        { "question": "Gleichnamige Pole...", "answers": ["stoßen ab", "ziehen an", "tanzen"], "correct": 0, "hint": "Nord-Nord = weg!" }
+      ]
+    },
+    {
+      "id": 1, "name": "Stromkreise", "icon": "⚡", "qrData": "physik-escape-1",
+      "questions": [
+        { "question": "Ein Stromkreis braucht...", "answers": ["geschlossene Leitung", "nur Batterie", "nur Kabel"], "correct": 0, "hint": "Geschlossen = Strom fließt!" },
+        { "question": "Was ist ein Leiter?", "answers": ["Metalle", "Gummi", "Holz"], "correct": 0, "hint": "Metalle leiten gut!" },
+        { "question": "Lampe leuchtet...", "answers": ["im geschlossenen Kreis", "ohne Batterie", "nur ohne Kabel"], "correct": 0, "hint": "Strom muss fließen!" },
+        { "question": "Symbol Batterie?", "answers": ["Zwei Striche (+/-)", "Kreis", "Blitz"], "correct": 0, "hint": "Langer Strich = Plus!" }
+      ]
+    },
+    {
+      "id": 2, "name": "Optik", "icon": "🔦", "qrData": "physik-escape-2",
+      "questions": [
+        { "question": "Wie breitet sich Licht aus?", "answers": ["geradlinig", "im Kreis", "nur im Wasser"], "correct": 0, "hint": "Gerade!" },
+        { "question": "Schatten entsteht wenn...", "answers": ["Licht blockiert wird", "es dunkel ist", "die Sonne scheint"], "correct": 0, "hint": "Hindernis!" },
+        { "question": "Je näher die Lichtquelle...", "answers": ["desto größer der Schatten", "desto kleiner", "desto heller"], "correct": 0, "hint": "Ausprobieren!" },
+        { "question": "Was ist eine Lichtquelle?", "answers": ["Etwas das selbst leuchtet", "der Mond", "ein Spiegel"], "correct": 0, "hint": "Sonne ja, Mond nein!" }
+      ]
+    },
+    {
+      "id": 3, "name": "Farben", "icon": "🌈", "qrData": "physik-escape-3",
+      "questions": [
+        { "question": "Farben des Regenbogens?", "answers": ["7 Farben", "3 Farben", "1 Farbe"], "correct": 0, "hint": "ROYGBIV!" },
+        { "question": "Ein rotes Objekt...", "answers": ["reflektiert Rot", "absorbiert Rot", "leuchtet blau"], "correct": 0, "hint": "Alles andere wird verschluckt!" },
+        { "question": "Rot + Grün (Licht) = ?", "answers": ["Gelb", "Blau", "Weiß"], "correct": 0, "hint": "Additive Mischung!" },
+        { "question": "Ein Prisma...", "answers": ["zerlegt weißes Licht", "verstärkt", "löscht"], "correct": 0, "hint": "Wie Regenbogen!" }
+      ]
+    }
+  ]
+}
