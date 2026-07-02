@@ -3,16 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EscapeGame — MindAR Start</title>
-  <style>
-    body { margin: 0; background: #000; }
-    #ui { position: fixed; left: 10px; top: 10px; z-index: 1000; background: rgba(0,0,0,0.5); color: #fff; padding: 8px; border-radius: 6px; font-family: Arial; }
-    button { padding: 6px 10px; }
-  </style>
-
-  <!-- Lokales A-Frame (nur einmal einbinden) -->
+  <title>EscapeGame — MindAR</title>
+  <style>body{margin:0}#ui{position:fixed;left:10px;top:10px;z-index:1000;background:rgba(0,0,0,0.5);color:#fff;padding:8px;border-radius:6px;font-family:Arial}button{padding:6px 10px}</style>
+  <!-- Lokales A-Frame (nur einmal, aus deinem Repo) -->
   <script src="aframe.min.js"></script>
-  <!-- MindAR (CDN) — muss nach A-Frame geladen werden -->
+  <!-- MindAR (muss nach A-Frame) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 <body>
@@ -21,28 +16,21 @@
     <span id="status" style="margin-left:8px">Bereit</span>
   </div>
 
-  <!-- MindAR Scene: imageTargetSrc auf deine .mind Datei setzen -->
   <a-scene mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 1;"
            color-space="sRGB"
            renderer="colorManagement: true, physicallyCorrectLights"
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false"
            embedded>
-
     <a-assets>
-      <!-- Zielbild / Referenzbild: benutze schaltung.jpg (in deinem assets/nft_input) -->
       <img id="targetImg" src="assets/nft_input/schaltung.jpg" />
-      <!-- Dein glTF Modell -->
       <a-asset-item id="myModel" src="assets/gltf/scene.gltf"></a-asset-item>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
-      <!-- optional: Overlay-Plane mit dem Referenzbild -->
-      <a-plane src="#targetImg" position="0 0 0" height="0.5" width="0.9" rotation="0 0 0"></a-plane>
-
-      <!-- glTF Modell: Tag korrekt geschlossen -->
+      <a-plane src="#targetImg" position="0 0 0" height="0.5" width="0.9"></a-plane>
       <a-gltf-model src="#myModel" position="0 0 0.1" rotation="0 180 0" scale="0.02 0.02 0.02"
                     animation="property: position; to: 0 0.12 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate">
       </a-gltf-model>
@@ -55,19 +43,17 @@
 
     startBtn.addEventListener('click', async () => {
       status.textContent = 'Warte auf Assets...';
-
       const scene = document.querySelector('a-scene');
       const assets = document.querySelector('a-assets');
 
-      // Warte auf a-assets loaded (oder Timeout)
       await new Promise(resolve => {
         if (!assets || assets.hasAttribute('loaded')) return resolve();
         const onLoaded = () => { assets.removeEventListener('loaded', onLoaded); resolve(); };
         assets.addEventListener('loaded', onLoaded);
-        setTimeout(resolve, 5000); // Fallback nach 5s
+        setTimeout(resolve, 5000);
       });
 
-      // Warte optional auf glTF model-loaded
+      // optional: warte auf model-loaded
       const model = document.querySelector('a-gltf-model[src="#myModel"]');
       if (model) {
         await new Promise(resolve => {
@@ -78,10 +64,9 @@
         });
       }
 
-      // MindAR System starten (fordert Kameraerlaubnis)
       try {
         const sys = scene.systems['mindar-image-system'];
-        if (!sys) throw new Error('MindAR system nicht gefunden — wurde MindAR richtig geladen?');
+        if (!sys) throw new Error('MindAR system nicht gefunden');
         await sys.start();
         status.textContent = 'AR läuft — Target scannen';
       } catch (e) {
