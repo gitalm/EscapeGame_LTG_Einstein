@@ -1,83 +1,195 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>AR-Schaltung mit QR-Codes</title>
-
-  <!-- Basis-Pfad für GitHub Pages -->
-  <base href="https://gitalm.github.io/EscapeGame_LTG_Einstein/">
-
-  <!-- A-Frame und AR.js von CDN -->
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0, user-scalable=no" />
+  <title>MindAR — QR + Bild-Erkennung (Dein Repo)</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-    }
-    #ui {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 100;
-      color: white;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 14px;
-    }
+    html,body { height:100%; margin:0; font-family:Arial,Helvetica,sans-serif; background:#000; color:#fff; }
+    #ui { position:fixed; left:12px; top:12px; z-index:200; background:rgba(0,0,0,0.6); padding:10px; border-radius:8px; max-width:340px; }
+    #panel { position:fixed; right:12px; top:12px; z-index:200; width:340px; background:rgba(0,0,0,0.6); padding:12px; border-radius:8px; }
+    #overlayHint { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:220; background:rgba(0,0,0,0.8); padding:8px 12px; border-radius:20px; display:none; }
+    button { border:none; border-radius:6px; padding:8px; cursor:pointer; }
+    #choices button { width:100%; margin:6px 0; }
   </style>
 </head>
 <body>
   <div id="ui">
-    <div>🔬 AR-Schaltung Demo</div>
-    <div>Scanne das <strong>Schaltungsbild</strong> oder einen <strong>QR-Code</strong>!</div>
+    <strong>EscapeLab AR — MindAR Demo</strong>
+    <div id="status">Starte AR…</div>
+    <div style="font-size:13px; margin-top:6px;">Scanne ein Bild (Target) oder einen QR-Code.</div>
   </div>
 
-  <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
-    <!-- NFT Marker für das Schaltungsbild -->
-    <a-nft type="nft" url="assets/nft/schaltung" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-entity
-        gltf-model="url(assets/gltf/scene.gltf)"
-        scale="0.5 0.5 0.5"
-        position="0 0 0"
-        rotation="0 0 0">
-      </a-entity>
-    </a-nft>
+  <div id="panel">
+    <h3 id="taskTitle">Keine Aufgabe aktiv</h3>
+    <div id="taskText">Richte die Kamera auf ein Target oder scanne einen QR.</div>
+    <div id="choices"></div>
+    <button id="captureBtn" style="background:#4caf50; color:#fff; margin-top:8px;">Foto aufnehmen (bei sichtbar)</button>
+    <div style="margin-top:10px; font-size:13px;">Fortschritt: <span id="progCount">0</span>/<span id="progMax">3</span></div>
+  </div>
 
-    <!-- QR-Code Marker -->
-    <a-marker type="pattern" url="assets/patt/pattern-parallelschaltung.patt" preset="custom">
-      <a-box position="0 0.5 0" material="color: red; opacity: 0.8"></a-box>
-      <a-text position="0 1.2 0" value="Parallelschaltung" color="white" align="center"></a-text>
-    </a-marker>
+  <div id="overlayHint">Hinweis</div>
 
-    <a-marker type="pattern" url="assets/patt/pattern-optik.patt" preset="custom">
-      <a-box position="0 0.5 0" material="color: green; opacity: 0.8"></a-box>
-      <a-text position="0 1.2 0" value="Optik" color="white" align="center"></a-text>
-    </a-marker>
+  <!-- lokal vorhandene A-Frame (aus Repo) -->
+  <script src="aframe.min.js"></script>
+  <!-- MindAR (CDN prod build) -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-image-aframe.prod.js"></script>
+  <!-- lokales jsQR (du hast jsQR.js im Repo) -->
+  <script src="jsQR.js"></script>
 
-    <a-marker type="pattern" url="assets/patt/pattern-magnet.patt" preset="custom">
-      <a-box position="0 0.5 0" material="color: blue; opacity: 0.8"></a-box>
-      <a-text position="0 1.2 0" value="Magnetismus" color="white" align="center"></a-text>
-    </a-marker>
+  <a-scene
+    mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 3;"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true, antialias: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
-    <a-marker type="pattern" url="assets/patt/pattern-farbe.patt" preset="custom">
-      <a-box position="0 0.5 0" material="color: yellow; opacity: 0.8"></a-box>
-      <a-text position="0 1.2 0" value="Farbe" color="black" align="center"></a-text>
-    </a-marker>
+    <a-assets>
+      <a-asset-item id="einModel" src="assets/gltf/scene.gltf"></a-asset-item>
+    </a-assets>
 
-    <!-- Kamera -->
+    <!-- Entities für targets; targetIndex muss zur Reihenfolge der Targets in targets.mind passen -->
+    <a-entity id="target-0" mindar-image-target="targetIndex: 0">
+      <a-entity gltf-model="#einModel" scale="0.024 0.024 0.024" position="0 0 0" rotation="0 180 0"></a-entity>
+    </a-entity>
+
+    <a-entity id="target-1" mindar-image-target="targetIndex: 1">
+      <a-entity gltf-model="#einModel" scale="0.024 0.024 0.024" position="0 0 0" rotation="0 180 0"></a-entity>
+    </a-entity>
+
+    <a-entity id="target-2" mindar-image-target="targetIndex: 2">
+      <a-entity gltf-model="#einModel" scale="0.024 0.024 0.024" position="0 0 0" rotation="0 180 0"></a-entity>
+    </a-entity>
+
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-    console.log("🔬 AR-Szene geladen. Scanne einen Marker!");
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("⚠️ Dein Browser unterstützt keine Kamera. Nutze Chrome oder Firefox!");
+  // --- Aufgaben / QR mapping (anpassen je nach Targets) ---
+  const TASKS = [
+    { id:'parallelschaltung', title:'Parallelschaltung', description:'Erkenne die Parallelschaltung. Welche Aussage ist korrekt?', choices:['Strom teilt sich','Spannung teilt sich','Widerstand ist gleich'], answer:0, targetIndex:0, requirePhoto:true },
+    { id:'optik', title:'Optik: Spektrum', description:'Weite das Spektrum auf. Was passiert beim Aufweiten?', choices:['Spektralfarben trennen','Licht wird dunkler','Wellenlänge verkleinert'], answer:0, targetIndex:1, requirePhoto:true },
+    { id:'magnetismus', title:'Magnetismus', description:'Welches Material wird am stärksten magnetisiert?', choices:['Eisen','Aluminium','Kupfer'], answer:0, targetIndex:2, requirePhoto:false }
+  ];
+
+  const QR_ACTIONS = { 'hint-parallel': {type:'hint', text:'Tipp: Achte auf die Verdrahtung.'}, 'start-optik': {type:'task', taskId:'optik'} };
+
+  // DOM
+  const statusEl = document.getElementById('status');
+  const taskTitleEl = document.getElementById('taskTitle');
+  const taskTextEl = document.getElementById('taskText');
+  const choicesEl = document.getElementById('choices');
+  const captureBtn = document.getElementById('captureBtn');
+  const overlayHint = document.getElementById('overlayHint');
+  const progCountEl = document.getElementById('progCount');
+  const progMaxEl = document.getElementById('progMax');
+
+  progMaxEl.textContent = TASKS.length;
+  let solved = {}; TASKS.forEach(t=> solved[t.id]={solved:false, photo:null});
+
+  // show overlay message
+  function showOverlay(text, t=1800){ overlayHint.textContent=text; overlayHint.style.display='block'; setTimeout(()=>overlayHint.style.display='none',t); }
+
+  function updateProgress(){ progCountEl.textContent = Object.values(solved).filter(s=>s.solved).length; }
+
+  function showTask(task){
+    taskTitleEl.textContent = task.title;
+    taskTextEl.textContent = task.description;
+    choicesEl.innerHTML = '';
+    task.choices.forEach((c,i)=>{
+      const btn = document.createElement('button');
+      btn.textContent = c;
+      btn.onclick = ()=> {
+        if(i===task.answer){ solved[task.id].solved=true; showOverlay('Richtig!'); } else showOverlay('Falsch, versuche es erneut.');
+        updateProgress();
+      };
+      choicesEl.appendChild(btn);
+    });
+  }
+
+  function handleQR(text){
+    if(!text) return;
+    const action = QR_ACTIONS[text];
+    if(!action){ showOverlay('QR: '+text); return; }
+    if(action.type==='hint') taskTextEl.textContent = 'Hinweis: ' + action.text;
+    else if(action.type==='task'){ const t = TASKS.find(tt=>tt.id===action.taskId); if(t) showTask(t); }
+  }
+
+  // MindAR lifecycle: get video for QR scanning / photo capture
+  const sceneEl = document.querySelector('a-scene');
+  let videoEl = null, qrCanvas=null, qrCtx=null, qrLoopId=null;
+
+  sceneEl.addEventListener('renderstart', ()=> {
+    statusEl.textContent = 'AR bereit — scanne Targets oder QR.';
+    // MindAR erstellt ein <video> im DOM; wähle es (falls mehrere, die sichtbare)
+    videoEl = document.querySelector('video');
+    if(videoEl){
+      // QR canvas
+      qrCanvas = document.createElement('canvas'); qrCanvas.width = 320; qrCanvas.height = 240; qrCtx = qrCanvas.getContext('2d');
+      startQRLoop();
     }
+  });
+
+  // target found / lost handlers
+  TASKS.forEach(task=>{
+    const el = document.querySelector(`#target-${task.targetIndex}`);
+    if(!el) return;
+    el.addEventListener('targetFound', ()=> {
+      showOverlay(task.title + ' erkannt',1200);
+      if(task.requirePhoto){
+        taskTitleEl.textContent = task.title + ' (Foto erforderlich)';
+        taskTextEl.textContent = task.description + ' -> Foto aufnehmen, um abzuschließen.';
+      } else showTask(task);
+    });
+    el.addEventListener('targetLost', ()=> { showOverlay(task.title + ' nicht sichtbar',800); });
+  });
+
+  // capture button
+  captureBtn.addEventListener('click', ()=>{
+    if(!videoEl){ alert('Video noch nicht bereit'); return; }
+    // find visible target
+    const visible = TASKS.find(t=>{
+      const el = document.querySelector(`#target-${t.targetIndex}`);
+      return el && el.getAttribute('visible') === true;
+    });
+    if(!visible){ alert('Kein Target sichtbar. Richte die Kamera auf das Target und versuche erneut.'); return; }
+    if(!visible.requirePhoto){ alert('Für diese Aufgabe ist kein Foto erforderlich. Benutze die Auswahlmöglichkeiten.'); return; }
+    // capture full-resolution frame from video
+    const w = videoEl.videoWidth, h = videoEl.videoHeight;
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(videoEl,0,0,w,h);
+    const dataURL = c.toDataURL('image/jpeg',0.85);
+    solved[visible.id].photo = dataURL;
+    solved[visible.id].solved = true;
+    showOverlay('Foto gespeichert — Aufgabe abgeschlossen.');
+    updateProgress();
+  });
+
+  // QR loop using jsQR
+  function startQRLoop(){
+    if(!videoEl || !qrCtx) return;
+    function tick(){
+      try{
+        qrCtx.drawImage(videoEl,0,0,qrCanvas.width,qrCanvas.height);
+        const data = qrCtx.getImageData(0,0,qrCanvas.width,qrCanvas.height);
+        const code = jsQR(data.data, qrCanvas.width, qrCanvas.height, {inversionAttempts:'dontInvert'});
+        if(code){
+          handleQR(code.data);
+          showOverlay('QR: ' + code.data, 1400);
+        }
+      }catch(e){ console.warn('QR Fehler', e); }
+      qrLoopId = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  // initial UI
+  showTask(TASKS[0]);
+  updateProgress();
+
+  // expose state for debugging
+  window.__escapeLab = { TASKS, solved };
   </script>
 </body>
 </html>
