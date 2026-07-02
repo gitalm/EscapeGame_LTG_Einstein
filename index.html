@@ -1,51 +1,91 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>AR Aufgaben — Scene.gltf</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AR Aufgaben — Einstein</title>
   <style>
     body { margin:0; font-family: Arial, sans-serif; }
     #home, #arView { position:fixed; inset:0; display:flex; align-items:flex-start; justify-content:center; }
     #home { background:#fafafa; padding:40px; }
-    #taskList { width:100%; max-width:600px; }
-    .task { background:#fff; padding:12px 16px; margin:8px 0; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,0.08); cursor:pointer; }
-    #arControls { position: absolute; top:12px; left:12px; z-index:9999; }
-    #backBtn { padding:8px 12px; }
+    #taskList { width:100%; max-width:640px; }
+    .task { background:#fff; padding:14px 16px; margin:10px 0; border-radius:6px; box-shadow:0 1px 6px rgba(0,0,0,0.08); cursor:pointer; }
+    .task:hover { transform:translateY(-2px); transition:0.12s; }
+    #arControls { position: absolute; top:12px; left:12px; z-index:9999; background: rgba(0,0,0,0.35); color:#fff; padding:8px; border-radius:6px; }
+    #backBtn { padding:6px 10px; margin-bottom:6px; display:block; }
     a-scene { position:fixed !important; top:0; left:0; width:100% !important; height:100% !important; }
+    #status { margin-left:8px; }
   </style>
 
-  <!-- A-Frame per CDN (wichtig: zuerst A-Frame) -->
-  <script src="https://unpkg.com/aframe@1.4.1/dist/aframe.min.js"></script>
-  <!-- MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- lokale A-Frame (falls vorhanden) laden; falls nicht, lade CDN -->
+  <script>
+    (function(){
+      var loadMindar = function(){
+        var m = document.createElement('script');
+        m.src = 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js';
+        m.defer = true;
+        document.head.appendChild(m);
+      };
+      // Versuche lokale aframe.min.js (im Projektverzeichnis). Falls nicht vorhanden, lade CDN.
+      var s = document.createElement('script');
+      s.src = 'aframe.min.js';
+      s.defer = true;
+      s.onload = loadMindar;
+      s.onerror = function(){
+        // Fallback CDN
+        var s2 = document.createElement('script');
+        s2.src = 'https://cdn.jsdelivr.net/npm/aframe@1.4.1/dist/aframe.min.js';
+        s2.defer = true;
+        s2.onload = loadMindar;
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
 </head>
 <body>
+  <!-- Startseite -->
   <div id="home">
     <div id="taskList">
       <h1>Aufgaben</h1>
       <div id="tasksContainer"></div>
       <p>Klicke eine Aufgabe, um die AR‑Ansicht zu öffnen.</p>
+      <p>Hinweis: Die Datei assets/gltf/scene.gltf und die targets.mind müssen im Projekt liegen.</p>
     </div>
   </div>
 
+  <!-- AR‑Ansicht -->
   <div id="arView" style="display:none;">
     <div id="arControls">
       <button id="backBtn">Zurück</button>
-      <span id="status">Bereit</span>
-      <br>
-      Stimme: <select id="voiceSelect"></select>
+      <div>
+        <span id="status">Bereit</span>
+      </div>
+      <div style="margin-top:6px;">
+        Stimme:
+        <select id="voiceSelect" style="min-width:160px;"></select>
+      </div>
     </div>
 
-    <a-scene id="scene" mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 2;"
-             color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights"
-             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <!-- A-Frame / MindAR Szene -->
+    <a-scene id="scene"
+             mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 2;"
+             color-space="sRGB"
+             renderer="colorManagement: true, physicallyCorrectLights"
+             vr-mode-ui="enabled: false"
+             device-orientation-permission-ui="enabled: false">
+
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- dynamische Target-Entity (targetIndex wird gesetzt) -->
+      <!-- Dynamische Target-Entity: targetIndex wird beim StartTask gesetzt -->
       <a-entity id="dynamicTarget" mindar-image-target="targetIndex: 0">
-        <!-- Nutze deine vorhandene scene.gltf -->
-        <a-gltf-model id="taskModel" src="assets/gltf/scene.gltf" position="0 0 0" rotation="0 180 0" scale="0 0 0" visible="false"></a-gltf-model>
+        <!-- Verwende deine vorhandene scene.gltf (keine zusätzliche Bild-Ebene) -->
+        <a-gltf-model id="taskModel"
+                      src="assets/gltf/scene.gltf"
+                      position="0 0 0"
+                      rotation="0 180 0"
+                      scale="0 0 0"
+                      visible="false"></a-gltf-model>
 
         <a-entity id="tipText" position="0 -0.5 0.05" visible="false">
           <a-plane color="#000" opacity="0.7" width="1.4" height="0.28"></a-plane>
@@ -56,13 +96,15 @@
   </div>
 
   <script>
-    // Tasks konfigurieren: targetIndex angeben (0..N entsprechend deiner targets.mind)
+    // -------- Konfiguration der Aufgaben (anpassen) --------
     const tasks = [
       { name: 'Schaltplan erstellen', hint: 'Erstelle den Schaltplan wie gezeigt.', targetIndex: 0, model: 'assets/gltf/scene.gltf' },
       { name: 'Bauteil prüfen', hint: 'Kontrolliere das Bauteil auf Beschädigungen.', targetIndex: 1, model: 'assets/gltf/scene.gltf' },
-      // weitere Aufgaben hier hinzufügen
+      // Mehr Aufgaben hier ergänzen...
     ];
+    const desiredHeight = 0.5; // gewünschte Modellhöhe in Metern (anpassen)
 
+    // -------- DOM-Elemente --------
     const tasksContainer = document.getElementById('tasksContainer');
     const home = document.getElementById('home');
     const arView = document.getElementById('arView');
@@ -77,10 +119,9 @@
     const tipTextInner = document.getElementById('tipTextInner');
 
     let currentTaskIndex = null;
-    const desiredHeight = 0.5; // gewünschte Modellhöhe in Metern (anpassen)
 
-    // Liste füllen
-    tasks.forEach((t,i) => {
+    // Aufgabenliste anzeigen
+    tasks.forEach((t, i) => {
       const el = document.createElement('div');
       el.className = 'task';
       el.textContent = t.name;
@@ -88,7 +129,7 @@
       tasksContainer.appendChild(el);
     });
 
-    // TTS Utilities
+    // -------- TTS / Stimmen Auswahl --------
     function listVoices() { return window.speechSynthesis ? window.speechSynthesis.getVoices() : []; }
     function pickMaleGermanVoice() {
       const maleNames = ['Markus','Thomas','Michael','Peter','Stefan','Jan','Paul','David','Daniel','Jonas','Tom','Mark','Hans'];
@@ -119,9 +160,11 @@
     if ('speechSynthesis' in window) {
       if (speechSynthesis.getVoices().length) populateVoiceSelect();
       else speechSynthesis.onvoiceschanged = populateVoiceSelect;
+      // Prime TTS (verhindert Blockierung)
       try { const u = new SpeechSynthesisUtterance(''); u.volume = 0; speechSynthesis.speak(u); } catch(e) {}
-    } else { voiceSelect.style.display = 'none'; }
-
+    } else {
+      voiceSelect.style.display = 'none';
+    }
     function speakText(text) {
       if (!('speechSynthesis' in window)) return;
       const utt = new SpeechSynthesisUtterance(text);
@@ -134,7 +177,38 @@
       window.speechSynthesis.speak(utt);
     }
 
-    // Start Task: setze targetIndex und (falls nötig) Modellpfad, starte AR
+    // -------- Auto-scale Funktion für das Modell --------
+    function computeFinalScale(el, desiredHeightMeters) {
+      try {
+        const obj = el.getObject3D('mesh') || el.getObject3D('model') || el.getObject3D('scene');
+        if (!obj) return null;
+        const box = new THREE.Box3().setFromObject(obj);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const modelHeight = size.y > 0.001 ? size.y : Math.max(size.x, size.z);
+        if (modelHeight <= 0) return null;
+        const scaleFactor = desiredHeightMeters / modelHeight;
+        return `${scaleFactor} ${scaleFactor} ${scaleFactor}`;
+      } catch (e) {
+        console.warn('computeFinalScale error', e);
+        return null;
+      }
+    }
+
+    // Wenn Modell geladen ist, berechne finalScale und setze initiales unsichtbar
+    taskModel.addEventListener('model-loaded', () => {
+      const final = computeFinalScale(taskModel, desiredHeight);
+      if (final) {
+        taskModel.dataset.finalScale = final;
+        taskModel.setAttribute('scale', '0 0 0');
+        taskModel.setAttribute('visible', 'false');
+        console.log('Final scale gesetzt:', final);
+      } else {
+        console.warn('Final scale konnte nicht berechnet werden; verwende Fallback.');
+      }
+    });
+
+    // -------- Start Task: UI wechseln, targetIndex setzen, AR starten --------
     async function startTask(i) {
       currentTaskIndex = i;
       const task = tasks[i];
@@ -145,50 +219,42 @@
       // targetIndex setzen
       dynamicTarget.setAttribute('mindar-image-target', `targetIndex: ${task.targetIndex}`);
 
-      // Modellpfad setzen (verwende vorhandene scene.gltf)
+      // Modellpfad setzen (wir verwenden scene.gltf; kann hier überschrieben werden)
       taskModel.setAttribute('src', task.model);
       taskModel.setAttribute('visible', 'false');
       taskModel.setAttribute('scale', '0 0 0');
 
-      // MindAR starten (Kamera/Tracking)
+      // MindAR System starten (Kamera/Tracking)
       try {
-        const sys = scene.systems['mindar-image-system'];
+        // Warte, bis die MindAR-System-API verfügbar ist
+        const sys = await waitForMindarSystem();
         await sys.start();
         status.textContent = 'AR läuft — Target scannen';
       } catch (e) {
-        console.error('AR Start Fehler', e);
+        console.error('Fehler beim Starten von AR', e);
         status.textContent = 'Fehler beim Starten von AR';
       }
-
-      // Berechne Scale sobald Modell geladen (falls model-loaded schon passiert, Event dennoch feuert)
-      const loaded = new Promise(resolve => {
-        const onLoaded = () => {
-          taskModel.removeEventListener('model-loaded', onLoaded);
-          try {
-            const obj = taskModel.getObject3D('mesh') || taskModel.getObject3D('model') || taskModel.getObject3D('scene');
-            const box = new THREE.Box3().setFromObject(obj);
-            const size = new THREE.Vector3(); box.getSize(size);
-            const modelHeight = size.y > 0.001 ? size.y : Math.max(size.x, size.z);
-            const scaleFactor = (modelHeight > 0) ? (desiredHeight / modelHeight) : 0.2;
-            taskModel.dataset.finalScale = `${scaleFactor} ${scaleFactor} ${scaleFactor}`;
-          } catch(e) { console.warn('Auto scale failed', e); }
-          resolve(true);
-        };
-        const onErr = (e) => { taskModel.removeEventListener('model-error', onErr); console.error('model-error', e); resolve(false); };
-        taskModel.addEventListener('model-loaded', onLoaded);
-        taskModel.addEventListener('model-error', onErr);
-        setTimeout(() => resolve(false), 5000);
-      });
-
-      await loaded;
     }
 
-    // Events für Target found/lost
+    // Hilfsfunktion: warte auf scene.systems['mindar-image-system']
+    function waitForMindarSystem(timeout = 5000) {
+      return new Promise((resolve, reject) => {
+        const start = Date.now();
+        (function check(){
+          const sys = scene && scene.systems ? scene.systems['mindar-image-system'] : null;
+          if (sys) return resolve(sys);
+          if (Date.now() - start > timeout) return reject(new Error('MindAR system nicht verfügbar'));
+          setTimeout(check, 100);
+        })();
+      });
+    }
+
+    // -------- targetFound / targetLost Events --------
     dynamicTarget.addEventListener('targetFound', () => {
-      const final = taskModel.dataset.finalScale || '0.2 0.2 0.2';
+      const final = taskModel.dataset.finalScale || '0.3 0.3 0.3';
       taskModel.setAttribute('visible', 'true');
       taskModel.removeAttribute('animation__scale');
-      taskModel.setAttribute('animation__scale', `property: scale; from: 0 0 0; to: ${final}; dur: 500; easing: easeOutCubic`);
+      taskModel.setAttribute('animation__scale', `property: scale; from: 0 0 0; to: ${final}; dur: 600; easing: easeOutCubic`);
       const task = tasks[currentTaskIndex];
       if (task) {
         tipTextInner.setAttribute('text', 'value', task.hint);
@@ -205,7 +271,7 @@
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     });
 
-    // Back: stop AR & zurück zur Startseite
+    // -------- Back Button: stoppe AR, zurück zur Startseite --------
     backBtn.addEventListener('click', async () => {
       try {
         const sys = scene.systems['mindar-image-system'];
@@ -215,7 +281,23 @@
       arView.style.display = 'none';
       status.textContent = 'Bereit';
       currentTaskIndex = null;
+      // Reset Modell-Visibility
+      taskModel.setAttribute('visible', 'false');
+      taskModel.setAttribute('scale', '0 0 0');
+      tipText.setAttribute('visible', 'false');
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     });
+
+    // Optional: prime voices erneut, falls sie erst später verfügbar sind
+    if ('speechSynthesis' in window) {
+      if (speechSynthesis.getVoices().length) populateVoiceSelect();
+      else speechSynthesis.onvoiceschanged = populateVoiceSelect;
+    }
+
+    // Debug-Log falls MindAR oder AFRAME fehlen
+    setTimeout(() => {
+      if (typeof AFRAME === 'undefined') console.warn('AFRAME ist nicht geladen. Stelle sicher, dass aframe.min.js im Projekt liegt oder CDN erreichbar ist.');
+    }, 1500);
 
   </script>
 </body>
