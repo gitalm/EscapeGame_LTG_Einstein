@@ -3,22 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EscapeGame — MindAR mit Einstein</title>
+  <title>AR — Einstein (robust + männliche Stimme)</title>
   <style>
     html,body { height:100%; margin:0; }
-    a-scene, .a-scene { position: fixed !important; top:0; left:0; width:100% !important; height:100% !important; }
-    video, canvas { position: fixed !important; top:0; left:0; width:100% !important; height:100% !important; object-fit: cover; }
+    a-scene { position: fixed !important; top:0; left:0; width:100% !important; height:100% !important; }
     #ui { position: fixed; left:10px; top:10px; z-index:9999; background: rgba(0,0,0,0.45); color:#fff; padding:8px; border-radius:6px; font-family: Arial, sans-serif; }
     button { padding:6px 10px; }
+    select { margin-left:8px; }
   </style>
 
-  <script src="aframe.min.js"></script>
+  <!-- CDN A-Frame + MindAR -->
+  <script src="https://unpkg.com/aframe@1.4.1/dist/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 <body>
   <div id="ui">
     <button id="startBtn">Start AR</button>
     <span id="status" style="margin-left:8px">Bereit</span>
+    <br>
+    Stimme: <select id="voiceSelect"></select>
   </div>
 
   <a-scene mindar-image="imageTargetSrc: assets/nft_input/targets.mind; maxTrack: 1;"
@@ -28,35 +31,21 @@
            device-orientation-permission-ui="enabled: false">
 
     <a-assets>
-      <img id="targetImg" src="assets/nft_input/schaltung.jpg" />
-      <!-- Dein existierendes Modell -->
-      <a-asset-item id="myModel" src="assets/gltf/scene.gltf"></a-asset-item>
-      <!-- Einstein-Modell: passe den Pfad an oder lege das Model genau dort ab -->
-      <a-asset-item id="einsteinModelAsset" src="assets/gltf/scene.gltf"></a-asset-item>
-      <!-- Optional: statt TTS eine Sprachdatei (falls vorhanden) -->
-      <!-- <audio id="tipAudio" src="assets/audio/tipp1_de.mp3"></audio> -->
+      <!-- kein overlay-image asset nötig -->
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!-- Target-Entity -->
+    <!-- Target-Entity: keine a-plane mehr -->
     <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
-      <a-plane src="#targetImg" position="0 0 0" height="0.5" width="0.9"></a-plane>
+      <!-- Einstein: src wird per Script gesetzt -->
+      <a-gltf-model id="einstein" src="" position="0 0 0" rotation="0 180 0"
+                    scale="0 0 0" visible="false"></a-gltf-model>
 
-      <!-- Dein Hauptmodell (sichtbar wie vorher) -->
-      <a-gltf-model id="mainModel" src="#myModel" position="0 0 0.1" rotation="0 180 0" scale="0.02 0.02 0.02"
-                    animation="property: position; to: 0 0.12 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate">
-      </a-gltf-model>
-
-      <!-- Einstein-Modell: standardmäßig unsichtbar -->
-      <a-gltf-model id="einstein" src="#einsteinModelAsset" position="0 0 0.12" rotation="0 180 0" scale="0.02 0.02 0.02"
-                    visible="false">
-      </a-gltf-model>
-
-      <!-- Text-Bubble unter Einstein (standardmäßig unsichtbar) -->
-      <a-entity id="tipText" position="0 -0.25 0.05" visible="false">
-        <a-plane color="#000" opacity="0.6" width="1.2" height="0.25" position="0 0 0"></a-plane>
-        <a-entity text="value: ; color: #fff; align: center; width: 1.0" position="0 0 0.01" id="tipTextInner"></a-entity>
+      <!-- Tipp-Bubble -->
+      <a-entity id="tipText" position="0 -0.5 0.05" visible="false">
+        <a-plane color="#000" opacity="0.7" width="1.4" height="0.28" position="0 0 0"></a-plane>
+        <a-entity id="tipTextInner" text="value: ; color: #fff; align: center; width: 1.2" position="0 0 0.01"></a-entity>
       </a-entity>
     </a-entity>
   </a-scene>
@@ -64,85 +53,204 @@
   <script>
     const startBtn = document.getElementById('startBtn');
     const status = document.getElementById('status');
+    const voiceSelect = document.getElementById('voiceSelect');
 
+    // Welche Pfade prüfen (glb bevorzugt)
+    const candidatePaths = ['assets/gltf/scene.glb','assets/gltf/scene.gltf'];
+
+    // gewünschte Höhe des Modells in Metern (anpassen)
+    const desiredHeight = 0.5; // 0.5m = etwas größer; erhöhen = größer
+
+    const einsteinEl = document.getElementById('einstein');
+    const targetEntity = document.getElementById('targetEntity');
+    const tipTextEl = document.getElementById('tipText');
+    const tipTextInner = document.getElementById('tipTextInner');
+    const nextHint = "Gut gemacht! Dein nächster Hinweis befindet sich beim großen roten Bild im Erdgeschoss.";
+
+    // überprüft Pfad mittels HEAD (robuster)
+    async function findModelPath() {
+      for (const p of candidatePaths) {
+        try {
+          const res = await fetch(p, { method: 'HEAD' });
+          if (res.ok) return p;
+        } catch(e) { /* ignore */ }
+      }
+      return null;
+    }
+
+    // Stimmen / Auswahl
+    function listVoices() { return window.speechSynthesis ? window.speechSynthesis.getVoices() : []; }
+
+    function pickMaleGermanVoice() {
+      const maleNames = ['Markus','Thomas','Michael','Peter','Stefan','Jan','Paul','David','Daniel','Jonas','Tom','Mark','Hans'];
+      const voices = listVoices();
+      const deVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('de'));
+      for (const n of maleNames) {
+        const match = deVoices.find(v => v.name && v.name.toLowerCase().includes(n.toLowerCase()));
+        if (match) return match;
+      }
+      if (deVoices.length) return deVoices[0];
+      return voices[0] || null;
+    }
+
+    function populateVoiceSelect() {
+      const voices = listVoices();
+      voiceSelect.innerHTML = '';
+      voices.forEach((v,i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${v.name} (${v.lang})`;
+        voiceSelect.appendChild(opt);
+      });
+      const auto = pickMaleGermanVoice();
+      if (auto) {
+        const idx = voices.indexOf(auto);
+        if (idx >= 0) voiceSelect.value = idx;
+      }
+    }
+
+    function primeTTS() {
+      if (!('speechSynthesis' in window)) return;
+      if (speechSynthesis.getVoices().length) populateVoiceSelect();
+      else speechSynthesis.onvoiceschanged = populateVoiceSelect;
+      try {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+      } catch(e) { /* ignore */ }
+    }
+
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) return;
+      const utt = new SpeechSynthesisUtterance(text);
+      const voices = listVoices();
+      const sel = voices[voiceSelect.value];
+      if (sel) utt.voice = sel;
+      utt.lang = sel && sel.lang ? sel.lang : 'de-DE';
+      utt.rate = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utt);
+    }
+
+    // Auto-scale: wird ausgeführt, sobald Modell geladen ist
+    function autoScaleModel(el, desiredHeightMeters) {
+      try {
+        const obj = el.getObject3D('mesh') || el.getObject3D('model') || el.getObject3D('scene');
+        if (!obj) { console.warn('No Object3D found yet'); return null; }
+        const box = new THREE.Box3().setFromObject(obj);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const modelHeight = size.y > 0.001 ? size.y : Math.max(size.x, size.z);
+        if (modelHeight <= 0) return null;
+        const currentScale = el.getAttribute('scale');
+        const base = (currentScale && currentScale.x) ? currentScale.x : 1;
+        const scaleFactor = (desiredHeightMeters / modelHeight) * base;
+        return scaleFactor;
+      } catch(e) {
+        console.error('autoScaleModel error', e);
+        return null;
+      }
+    }
+
+    // Start-Button
     startBtn.addEventListener('click', async () => {
-      status.textContent = 'Warte auf Assets...';
-      const scene = document.querySelector('a-scene');
-      const assets = document.querySelector('a-assets');
+      status.textContent = 'Warte...';
+      primeTTS();
 
-      await new Promise(resolve => {
-        if (!assets || assets.hasAttribute('loaded')) return resolve();
-        const onLoaded = () => { assets.removeEventListener('loaded', onLoaded); resolve(); };
-        assets.addEventListener('loaded', onLoaded);
-        setTimeout(resolve, 5000);
+      const modelPath = await findModelPath();
+      if (!modelPath) {
+        status.textContent = 'Modell nicht gefunden (assets/gltf/scene.glb/gltf)';
+        console.error('Kein Modell unter assets/gltf/scene.glb oder scene.gltf gefunden.');
+        return;
+      }
+
+      // setze Model src und warte auf model-loaded
+      einsteinEl.setAttribute('src', modelPath);
+      console.log('Einstein src gesetzt auf', modelPath);
+
+      const modelLoaded = new Promise(resolve => {
+        const onLoad = async () => {
+          einsteinEl.removeEventListener('model-loaded', onLoad);
+          resolve(true);
+        };
+        const onErr = (e) => {
+          einsteinEl.removeEventListener('model-error', onErr);
+          console.error('model-error', e);
+          resolve(false);
+        };
+        einsteinEl.addEventListener('model-loaded', onLoad);
+        einsteinEl.addEventListener('model-error', onErr);
+        setTimeout(() => resolve(false), 6000);
       });
 
-      // wart auf model-loaded der beiden Modelle (optional)
-      const einstein = document.getElementById('einstein');
-      const mainModel = document.getElementById('mainModel');
-      await Promise.all(['model-loaded','model-loaded'].map((evt, i) => new Promise(res => {
-        const el = i===0 ? mainModel : einstein;
-        if (!el) return res();
-        if (el.getObject3D && el.getObject3D('mesh')) return res();
-        const handler = () => { el.removeEventListener('model-loaded', handler); res(); };
-        el.addEventListener('model-loaded', handler);
-        setTimeout(res, 5000);
-      })));
-
+      // Start MindAR
       try {
+        const scene = document.querySelector('a-scene');
         const sys = scene.systems['mindar-image-system'];
         if (!sys) throw new Error('MindAR system nicht gefunden');
         await sys.start();
         status.textContent = 'AR läuft — Target scannen';
       } catch (e) {
         console.error(e);
-        status.textContent = 'Fehler: ' + (e.message || e);
+        status.textContent = 'Fehler beim Starten von AR';
+      }
+
+      const ok = await modelLoaded;
+      if (!ok) console.warn('Model load failed or timed out — check Network tab for missing .bin/textures');
+      // Wenn geladen: berechne finale Scale (wird beim targetFound erneut verlässl.)
+    });
+
+    // Wenn das Modell geladen ist: berechne finalScale und speichere als data-attr
+    einsteinEl.addEventListener('model-loaded', () => {
+      const scale = autoScaleModel(einsteinEl, desiredHeight);
+      if (scale) {
+        // speichere finalScale als custom attribute (string)
+        einsteinEl.dataset.finalScale = `${scale} ${scale} ${scale}`;
+        // Setze initial unsichtbar & sehr klein (wird animiert beim targetFound)
+        einsteinEl.setAttribute('scale', '0 0 0');
+        einsteinEl.setAttribute('visible', 'false');
+        console.log('Final scale berechnet:', einsteinEl.dataset.finalScale);
+      } else {
+        console.warn('Final scale konnte nicht berechnet werden.');
       }
     });
 
-    // Wenn Target gefunden: Einstein sichtbar machen und Tipp sprechen/anzeigen
-    const targetEntity = document.getElementById('targetEntity');
-    const einsteinEl = document.getElementById('einstein');
-    const tipTextEl = document.getElementById('tipText');
-    const tipTextInner = document.getElementById('tipTextInner');
-    // Optional audio element fallback:
-    // const tipAudio = document.getElementById('tipAudio');
-
-    // Der Text, den Einstein sagen soll (anpassen)
-    const nextHint = "Gut gemacht! Dein nächster Hinweis befindet sich beim großen roten Bild im Erdgeschoss. Gehe dorthin, um weiterzumachen.";
-
+    // targetFound: sichtbarmachen + animieren + sprechen
     targetEntity.addEventListener('targetFound', () => {
-      // Einstein einblenden
-      if (einsteinEl) einsteinEl.setAttribute('visible', 'true');
-      // Text-Bubble anzeigen
-      if (tipTextEl) {
-        tipTextInner.setAttribute('text', 'value', nextHint); // setzt Text
-        tipTextEl.setAttribute('visible', 'true');
-      }
-      // Sprach-Ausgabe per Web Speech API (TTS)
+      console.log('targetFound');
+      const final = einsteinEl.dataset.finalScale || '0.2 0.2 0.2';
+      einsteinEl.setAttribute('visible', 'true');
+      // entferne ggf. alte animation
+      einsteinEl.removeAttribute('animation__scale');
+      // animiere scale von 0->final (600ms)
+      einsteinEl.setAttribute('animation__scale', `property: scale; from: 0 0 0; to: ${final}; dur: 600; easing: easeOutElastic;`);
+      // Tipp-Text anzeigen
+      tipTextInner.setAttribute('text', 'value', nextHint);
+      tipTextEl.setAttribute('visible', 'true');
+      // sprechen
       speakText(nextHint);
-      // Wenn du stattdessen eine Audio-Datei nutzen willst:
-      // if (tipAudio) tipAudio.play();
     });
 
     targetEntity.addEventListener('targetLost', () => {
-      if (einsteinEl) einsteinEl.setAttribute('visible', 'false');
-      if (tipTextEl) tipTextEl.setAttribute('visible', 'false');
-      // Stoppe laufende Sprachausgabe, falls nötig
+      console.log('targetLost');
+      // ausblenden, stoppe TTS
+      einsteinEl.setAttribute('visible', 'false');
+      // entferne animation falls nötig
+      einsteinEl.removeAttribute('animation__scale');
+      // setze scale zurück auf 0 (sicher)
+      einsteinEl.setAttribute('scale', '0 0 0');
+      tipTextEl.setAttribute('visible', 'false');
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      // if (tipAudio) { tipAudio.pause(); tipAudio.currentTime = 0; }
     });
 
-    function speakText(text) {
-      if (!('speechSynthesis' in window)) {
-        console.log('TTS nicht verfügbar. Text:', text);
-        return;
-      }
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'de-DE'; // oder 'en-US' je nach Sprache
-      utter.rate = 1; // Geschwindigkeit anpassen
-      window.speechSynthesis.speak(utter);
+    // populate voices initial
+    if ('speechSynthesis' in window) {
+      if (speechSynthesis.getVoices().length) populateVoiceSelect();
+      else speechSynthesis.onvoiceschanged = populateVoiceSelect;
+    } else {
+      voiceSelect.style.display = 'none';
     }
+
   </script>
 </body>
 </html>
