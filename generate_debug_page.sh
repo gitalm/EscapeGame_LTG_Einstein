@@ -1,0 +1,536 @@
+#!/bin/bash
+
+echo "🔍 Erstelle Debug-Testseite (korrigierte Pfade)..."
+
+# HTML-Datei erzeugen
+cat > debug_test.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🧪 Physik Escape - Debug Ansicht</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { text-align: center; color: #4fc3f7; margin-bottom: 30px; }
+    h2 { color: #ffd54f; border-bottom: 2px solid #4fc3f7; padding-bottom: 8px; margin-top: 30px; }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 15px;
+      padding: 15px;
+      border: 1px solid #4fc3f7;
+    }
+    .card h3 { margin: 0 0 10px 0; color: #4fc3f7; }
+    .card img { max-width: 100%; border-radius: 8px; margin: 10px 0; }
+    .card .status { 
+      display: inline-block; 
+      padding: 4px 12px; 
+      border-radius: 10px; 
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+    .status.ok { background: #66bb6a; color: #000; }
+    .status.missing { background: #ef5350; }
+    .status.warn { background: #ffa726; color: #000; }
+    
+    .preview-box {
+      background: rgba(0,0,0,0.5);
+      border: 2px dashed #4fc3f7;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      margin: 10px 0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    th { color: #4fc3f7; font-weight: bold; }
+    
+    .file-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+    }
+    .file-check .icon { font-size: 1.2em; }
+    .file-check .path { font-family: monospace; flex-grow: 1; }
+    
+    #camera-test {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+      display: block;
+      border-radius: 15px;
+      background: #000;
+    }
+    
+    .btn {
+      background: #4fc3f7;
+      color: #000;
+      border: none;
+      padding: 10px 25px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .btn:hover { background: #29b6f6; }
+    
+    .footer { text-align: center; color: #666; margin-top: 40px; }
+    
+    .summary {
+      background: rgba(79,195,247,0.1);
+      border: 1px solid #4fc3f7;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .summary .count { font-size: 2em; font-weight: bold; color: #4fc3f7; }
+    .summary .label { color: #aaa; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Physik Escape - Debug Konsole</h1>
+  
+  <!-- Zusammenfassung -->
+  <div class="summary">
+    <h2>📊 Zusammenfassung</h2>
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+      <div><span class="count" id="countFiles">0</span> <span class="label">Dateien geprüft</span></div>
+      <div><span class="count" id="countOk" style="color: #66bb6a;">0</span> <span class="label">✅ Vorhanden</span></div>
+      <div><span class="count" id="countMissing" style="color: #ef5350;">0</span> <span class="label">❌ Fehlt</span></div>
+      <div><span class="count" id="countQuestions">0</span> <span class="label">📝 Fragen</span></div>
+    </div>
+  </div>
+  
+  <!-- System Status -->
+  <h2>📦 Bibliotheken</h2>
+  <div class="card" id="libStatus">
+    <div class="file-check">
+      <span class="icon">⏳</span>
+      <span class="path">Prüfe Bibliotheken...</span>
+    </div>
+  </div>
+  
+  <!-- Dateien Übersicht -->
+  <h2>📁 Assets & Dateien</h2>
+  <div class="grid" id="fileGrid">
+    <!-- Wird per JavaScript gefüllt -->
+  </div>
+  
+  <!-- Fragen Vorschau -->
+  <h2>📝 Fragen aus data.json</h2>
+  <div id="questionsPreview">
+    <div class="preview-box">
+      <p>⏳ Lade Fragen...</p>
+    </div>
+  </div>
+  
+  <!-- Kamera Test -->
+  <h2>📷 Kamera Test</h2>
+  <div class="card">
+    <video id="camera-test" autoplay playsinline></video>
+    <button class="btn" onclick="startCamera()">📷 Kamera starten</button>
+    <button class="btn" onclick="stopCamera()">⏹️ Stopp</button>
+    <p id="cameraStatus" style="color: #aaa;"></p>
+  </div>
+  
+  <!-- QR-Codes Vorschau -->
+  <h2>📱 QR-Codes</h2>
+  <div class="grid" id="qrGrid"></div>
+  
+  <!-- NFT Marker Check -->
+  <h2>🏷️ NFT Marker</h2>
+  <div id="nftCheck"></div>
+  
+  <div class="footer">
+    <p>🔄 Seite neu laden für aktuelle Prüfung</p>
+    <p style="font-size: 0.8em;">Generiert am: <span id="timestamp"></span></p>
+  </div>
+  
+  <script>
+    // ==========================================
+    //  DEBUG JAVASCRIPT
+    // ==========================================
+    
+    const stats = {
+      total: 0,
+      ok: 0,
+      missing: 0
+    };
+    
+    // Timestamp
+    document.getElementById('timestamp').textContent = new Date().toLocaleString('de-DE');
+    
+    // 1. Bibliotheken prüfen
+    function checkLibraries() {
+      const container = document.getElementById('libStatus');
+      container.innerHTML = '';
+      
+      const libraries = [
+        { name: 'A-Frame', check: () => typeof AFRAME !== 'undefined', file: 'aframe.min.js' },
+        { name: 'AR.js NFT', check: () => { 
+            try { return typeof AFRAME !== 'undefined' && AFRAME.components && 'nft' in AFRAME.components; } 
+            catch(e) { return false; }
+          }, file: 'aframe-ar-nft.js.js' },
+        { name: 'Three.js', check: () => typeof THREE !== 'undefined', file: 'three.min.js.js' },
+        { name: 'jsQR', check: () => typeof jsQR !== 'undefined', file: 'jsQR.js' }
+      ];
+      
+      libraries.forEach(lib => {
+        let loaded = false;
+        try {
+          loaded = lib.check();
+        } catch(e) {
+          loaded = false;
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'file-check';
+        
+        if (loaded) {
+          stats.ok++;
+          div.innerHTML = `
+            <span class="icon">✅</span>
+            <span class="path">${lib.name} (${lib.file})</span>
+            <span class="status ok">Geladen</span>
+          `;
+        } else {
+          stats.missing++;
+          div.innerHTML = `
+            <span class="icon">❌</span>
+            <span class="path">${lib.name} (${lib.file})</span>
+            <span class="status missing">Nicht geladen</span>
+          `;
+        }
+        stats.total++;
+        container.appendChild(div);
+      });
+      
+      updateStats();
+    }
+    
+    // 2. Dateien prüfen
+    function checkAllFiles() {
+      const grid = document.getElementById('fileGrid');
+      
+      const allFiles = [
+        // Bibliotheken
+        { category: '📦 Bibliotheken', files: [
+          { name: 'A-Frame', path: './aframe.min.js' },
+          { name: 'AR.js NFT', path: './aframe-ar-nft.js.js' },
+          { name: 'Three.js', path: './three.min.js.js' },
+          { name: 'jsQR', path: './jsQR.js' }
+        ]},
+        // Daten
+        { category: '📊 Daten', files: [
+          { name: 'Fragen Daten (JSON)', path: './data.json' }
+        ]},
+        // GLTF Model
+        { category: '🧑‍🔬 Einstein 3D Model', files: [
+          { name: 'scene.gltf', path: './assets/gltf/scene.gltf' },
+          { name: 'scene.bin', path: './assets/gltf/scene.bin' },
+          { name: 'Base Color', path: './assets/gltf/textures/Material.001_baseColor.png' },
+          { name: 'Normal Map', path: './assets/gltf/textures/Material.001_normal.png' },
+          { name: 'Metallic Roughness', path: './assets/gltf/textures/Material.001_metallicRoughness.png' }
+        ]},
+        // Marker (.patt)
+        { category: '🏷️ AR Marker (.patt)', files: [
+          { name: 'pattern-magnet.patt', path: './assets/patt/pattern-magnet.patt' },
+          { name: 'pattern-optik.patt', path: './assets/patt/pattern-optik.patt' },
+          { name: 'pattern-farbe.patt', path: './assets/patt/pattern-farbe.patt' },
+          { name: 'pattern-parallelschaltung.patt', path: './assets/patt/pattern-parallelschaltung.patt' }
+        ]},
+        // Zusätzliche Marker-Bilder
+        { category: '➕ Marker Bilder (keine .patt)', files: [
+          { name: 'anchor.png', path: './assets/patt/anchor.png' },
+          { name: 'bluetooth.png', path: './assets/patt/bluetooth.png' },
+          { name: 'at-sign.png', path: './assets/patt/at-sign.png' },
+          { name: 'cast.png', path: './assets/patt/cast.png' }
+        ]},
+        // QR-Codes
+        { category: '📱 QR-Codes', files: [
+          { name: 'target_0.png', path: './qr_codes/target_0.png' },
+          { name: 'target_1.png', path: './qr_codes/target_1.png' },
+          { name: 'target_2.png', path: './qr_codes/target_2.png' },
+          { name: 'target_3.png', path: './qr_codes/target_3.png' }
+        ]},
+        // Bilder
+        { category: '🖼️ Bilder', files: [
+          { name: 'aufbau_elehre.jpg', path: './assets/images/aufbau_elehre.jpg' },
+          { name: 'schatten.png', path: './assets/images/schatten.png' },
+          { name: 'eingefügt3.png', path: './assets/images/eingefügt3.png' }
+        ]}
+      ];
+      
+      grid.innerHTML = '';
+      
+      allFiles.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h3>${cat.category}</h3>`;
+        
+        cat.files.forEach(file => {
+          const div = document.createElement('div');
+          div.className = 'file-check';
+          div.id = `file-${file.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+          div.innerHTML = `
+            <span class="icon">⏳</span>
+            <span class="path">${file.name}</span>
+            <span class="status warn">Prüfe...</span>
+          `;
+          card.appendChild(div);
+          
+          // Asynchrone Prüfung
+          setTimeout(() => checkSingleFile(file.path, file.name), 100 * cat.files.indexOf(file));
+        });
+        
+        grid.appendChild(card);
+      });
+    }
+    
+    async function checkSingleFile(path, name) {
+      const id = `file-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+      const div = document.getElementById(id);
+      if (!div) return;
+      
+      try {
+        const res = await fetch(path, { method: 'HEAD' });
+        if (res.ok) {
+          stats.ok++;
+          div.innerHTML = `
+            <span class="icon">✅</span>
+            <span class="path">${name}</span>
+            <span class="status ok">Vorhanden</span>
+          `;
+        } else {
+          stats.missing++;
+          div.innerHTML = `
+            <span class="icon">❌</span>
+            <span class="path">${name}</span>
+            <span class="status missing">Fehlt (${res.status})</span>
+          `;
+        }
+      } catch(e) {
+        stats.missing++;
+        div.innerHTML = `
+          <span class="icon">❌</span>
+          <span class="path">${name}</span>
+          <span class="status missing">Kein Zugriff</span>
+        `;
+      }
+      stats.total++;
+      updateStats();
+    }
+    
+    function updateStats() {
+      document.getElementById('countFiles').textContent = stats.total;
+      document.getElementById('countOk').textContent = stats.ok;
+      document.getElementById('countMissing').textContent = stats.missing;
+    }
+    
+    // 3. data.json laden
+    async function loadQuestions() {
+      const container = document.getElementById('questionsPreview');
+      
+      try {
+        const res = await fetch('./data.json');
+        const data = await res.json();
+        
+        document.getElementById('countQuestions').textContent = data.targets ? data.targets.length * 4 : 0;
+        
+        container.innerHTML = '';
+        (data.targets || []).forEach(target => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `
+            <h3>${target.icon || '📍'} ${target.name}</h3>
+            <p style="color: #aaa;">${target.questions ? target.questions.length : 0} Fragen</p>
+            <table>
+              <tr><th>#</th><th>Frage</th><th>Richtig</th></tr>
+              ${(target.questions || []).map((q, i) => `
+                <tr>
+                  <td>${i+1}</td>
+                  <td>${q.question.substring(0, 40)}...</td>
+                  <td style="color: #66bb6a;">${q.answers[q.correct]}</td>
+                </tr>
+              `).join('')}
+            </table>
+          `;
+          container.appendChild(div);
+        });
+        
+        if (!data.targets || data.targets.length === 0) {
+          container.innerHTML = '<div class="card" style="background: #ef5350;"><h3>❌ Keine Targets in data.json!</h3></div>';
+        }
+      } catch(e) {
+        container.innerHTML = `<div class="card" style="background: #ef5350;"><h3>❌ Datei nicht lesbar: ${e.message}</h3></div>`;
+      }
+    }
+    
+    // 4. Kamera Test
+    let cameraStream = null;
+    
+    async function startCamera() {
+      const video = document.getElementById('camera-test');
+      const status = document.getElementById('cameraStatus');
+      
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        status.textContent = '✅ Kamera aktiv';
+        status.style.color = '#66bb6a';
+      } catch(e) {
+        status.textContent = '❌ ' + e.message;
+        status.style.color = '#ef5350';
+      }
+    }
+    
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        document.getElementById('camera-test').srcObject = null;
+        document.getElementById('cameraStatus').textContent = '⏹️ Kamera gestoppt';
+      }
+    }
+    
+    // 5. QR-Codes Vorschau
+    function showQRCodes() {
+      const grid = document.getElementById('qrGrid');
+      const qrPaths = [
+        { name: 'Target 0 - Magnetismus', path: './qr_codes/target_0.png' },
+        { name: 'Target 1 - Stromkreise', path: './qr_codes/target_1.png' },
+        { name: 'Target 2 - Optik', path: './qr_codes/target_2.png' },
+        { name: 'Target 3 - Farben', path: './qr_codes/target_3.png' }
+      ];
+      
+      qrPaths.forEach(qr => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${qr.name}</h3>
+          <img src="${qr.path}" alt="${qr.name}" style="max-width: 200px;" onerror="this.outerHTML='<p style=\\'color:#ef5350;\\'>❌ QR-Code nicht gefunden</p>'">
+          <p style="color: #666; font-size: 0.8em;">${qr.path}</p>
+        `;
+        grid.appendChild(card);
+      });
+    }
+    
+    // 6. NFT Check
+    function checkNFT() {
+      const container = document.getElementById('nftCheck');
+      
+      const nftFiles = [
+        { name: 'NFT Set 1', base: 'versuch1' },
+        { name: 'NFT Set 2', base: 'versuch2' }
+      ];
+      
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<h3>🏷️ NFT Marker</h3>';
+      
+      if (nftFiles.length === 0) {
+        card.innerHTML += '<p style="color: #ffa726;">⚠️ Keine NFT Marker konfiguriert</p>';
+      } else {
+        nftFiles.forEach(set => {
+          const div = document.createElement('div');
+          div.className = 'file-check';
+          div.innerHTML = `
+            <span class="icon">⏳</span>
+            <span class="path">${set.base}.fset/.fset3/.iset</span>
+            <span class="status warn">Prüfe...</span>
+          `;
+          card.appendChild(div);
+          
+          // Prüfe ob die Dateien existieren
+          const extensions = ['fset', 'fset3', 'iset'];
+          extensions.forEach((ext, idx) => {
+            setTimeout(() => {
+              checkNFTFile(`./assets/nft/${set.base}.${ext}`, set.base, ext);
+            }, idx * 200);
+          });
+        });
+      }
+      
+      container.innerHTML = '';
+      container.appendChild(card);
+    }
+    
+    function checkNFTFile(path, base, ext) {
+      fetch(path, { method: 'HEAD' })
+        .then(res => {
+          // Suche das Elternelement und aktualisiere
+          const items = document.querySelectorAll('#nftCheck .file-check');
+          items.forEach(item => {
+            if (item.textContent.includes(base)) {
+              const span = item.querySelector('.status');
+              if (span) {
+                if (res.ok) {
+                  span.className = 'status ok';
+                  span.textContent = '✅ ' + ext + ' vorhanden';
+                } else {
+                  span.className = 'status missing';
+                  span.textContent = '❌ ' + ext + ' fehlt';
+                }
+              }
+            }
+          });
+        })
+        .catch(() => {});
+    }
+    
+    // ==========================================
+    //  INIT
+    // ==========================================
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      checkLibraries();
+      checkAllFiles();
+      loadQuestions();
+      showQRCodes();
+      checkNFT();
+      
+      console.log('🔍 Debug-Seite geladen');
+    });
+  </script>
+</body>
+</html>
+HTMLEOF
+
+echo "✅ Korrigierte Debug-Seite erstellt: debug_test.html"
+echo ""
+echo "📋 So nutzt du sie:"
+echo "   1. Terminal: python3 -m http.server 8000"
+echo "   2. Browser: http://localhost:8000/debug_test.html"
+echo ""
+echo "🔍 Die Seite zeigt jetzt korrekt an:"
+echo "   - ✅/❌ Bibliotheken (A-Frame, AR.js, Three.js, jsQR)"
+echo "   - ✅/❌ Alle Dateien in assets/, qr_codes/, etc."
+echo "   - 📝 Alle 16 Fragen aus data.json"
+echo "   - 📷 Kamera-Test direkt im Browser"
+echo "   - 📱 QR-Code Vorschau"

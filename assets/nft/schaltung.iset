@@ -1,0 +1,7 @@
+{
+  "image_width": 1024,
+  "image_height": 1020,
+  "num_features": 500,
+  "dtype": "ORB",
+  "version": 3
+}
