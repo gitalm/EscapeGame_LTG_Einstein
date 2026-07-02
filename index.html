@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>AR-Schaltung mit QR-Codes</title>
-  
-  <!-- A-Frame und AR.js von CDN (für GitHub Pages) -->
+
+  <!-- A-Frame und AR.js von CDN -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  
+
   <style>
     body {
       margin: 0;
@@ -16,26 +16,15 @@
       font-family: Arial, sans-serif;
     }
     #ui {
-      position: fixed; 
-      top: 10px; 
-      left: 10px; 
-      z-index: 100;
-      color: white; 
-      background: rgba(0,0,0,0.7); 
-      padding: 10px; 
-      border-radius: 5px;
-      font-size: 14px;
-    }
-    #loading {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      top: 10px;
+      left: 10px;
+      z-index: 100;
       color: white;
       background: rgba(0,0,0,0.7);
-      padding: 20px;
-      border-radius: 10px;
-      z-index: 1000;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -46,34 +35,33 @@
   </div>
 
   <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
-    
-    <!-- NFT Marker für das Schaltungsbild (Pfad relativ zum Repository) -->
-    <a-nft type="nft" url="EscapeGame_LTG_Einstein/assets/nft/schaltung" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-      <a-entity 
-        gltf-model="url(EscapeGame_LTG_Einstein/assets/gltf/scene.gltf)" 
+    <!-- NFT Marker für das Schaltungsbild -->
+    <a-nft type="nft" url="assets/nft/schaltung" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+      <a-entity
+        gltf-model="url(assets/gltf/scene.gltf)"
         scale="0.5 0.5 0.5"
         position="0 0 0"
         rotation="0 0 0">
       </a-entity>
     </a-nft>
 
-    <!-- QR-Code Marker (Pfad relativ zum Repository) -->
-    <a-marker type="pattern" url="EscapeGame_LTG_Einstein/assets/patt/pattern-parallelschaltung.patt" preset="custom">
+    <!-- QR-Code Marker -->
+    <a-marker type="pattern" url="assets/patt/pattern-parallelschaltung.patt" preset="custom">
       <a-box position="0 0.5 0" material="color: red; opacity: 0.8"></a-box>
       <a-text position="0 1.2 0" value="Parallelschaltung" color="white" align="center"></a-text>
     </a-marker>
 
-    <a-marker type="pattern" url="EscapeGame_LTG_Einstein/assets/patt/pattern-optik.patt" preset="custom">
+    <a-marker type="pattern" url="assets/patt/pattern-optik.patt" preset="custom">
       <a-box position="0 0.5 0" material="color: green; opacity: 0.8"></a-box>
       <a-text position="0 1.2 0" value="Optik" color="white" align="center"></a-text>
     </a-marker>
 
-    <a-marker type="pattern" url="EscapeGame_LTG_Einstein/assets/patt/pattern-magnet.patt" preset="custom">
+    <a-marker type="pattern" url="assets/patt/pattern-magnet.patt" preset="custom">
       <a-box position="0 0.5 0" material="color: blue; opacity: 0.8"></a-box>
       <a-text position="0 1.2 0" value="Magnetismus" color="white" align="center"></a-text>
     </a-marker>
 
-    <a-marker type="pattern" url="EscapeGame_LTG_Einstein/assets/patt/pattern-farbe.patt" preset="custom">
+    <a-marker type="pattern" url="assets/patt/pattern-farbe.patt" preset="custom">
       <a-box position="0 0.5 0" material="color: yellow; opacity: 0.8"></a-box>
       <a-text position="0 1.2 0" value="Farbe" color="black" align="center"></a-text>
     </a-marker>
@@ -83,18 +71,10 @@
   </a-scene>
 
   <script>
-    // Debugging-Log
     console.log("🔬 AR-Szene geladen. Scanne einen Marker!");
-    
-    // Kamera-Berechtigung prüfen
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert("⚠️ Dein Browser unterstützt keine Kamera. Nutze Chrome oder Firefox!");
     }
-    
-    // Lade-Animation ausblenden, wenn die Szene bereit ist
-    document.querySelector('a-scene').addEventListener('loaded', function() {
-      console.log("✅ A-Frame Szene bereit!");
-    });
   </script>
 </body>
 </html>
