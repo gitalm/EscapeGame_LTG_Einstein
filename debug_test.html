@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🧪 Physik Escape - Debug</title>
   
-  <!-- BIBLIOTHEKEN HIER LADEN (wichtig für die Prüfung!) -->
+  <!-- BIBLIOTHEKEN MIT RICHTIGEN DATEINAMEN -->
   <script src="./aframe.min.js"></script>
-  <script src="./aframe-ar-nft.js.js"></script>
+  <script src="./aframe-ar-nft.js"></script>
   <script src="./three.min.js.js"></script>
   <script src="./jsQR.js"></script>
   
@@ -17,42 +17,70 @@
     .card { background: rgba(255,255,255,0.08); border: 1px solid #4fc3f7; border-radius: 15px; padding: 15px; margin: 15px 0; }
     .ok { color: #66bb6a; }
     .missing { color: #ef5350; }
+    .warn { color: #ffa726; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
     .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.8em; margin: 2px; }
     .badge-ok { background: #66bb6a; color: #000; }
     .badge-missing { background: #ef5350; }
-    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    .badge-warn { background: #ffa726; color: #000; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9em; }
     th, td { padding: 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
     img { max-width: 200px; border-radius: 8px; }
     .btn { background: #4fc3f7; color: #000; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; margin: 3px; }
+    .summary { display: flex; gap: 20px; flex-wrap: wrap; }
+    .summary-item { background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 10px; }
+    .summary-item .number { font-size: 1.5em; font-weight: bold; }
+    .file-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
   </style>
 </head>
 <body>
 
-  <h1>🧪 Physik Escape - Debug</h1>
+  <h1>🧪 Physik Escape - Debug Konsole</h1>
+  
+  <!-- ZUSAMMENFASSUNG -->
+  <div class="card summary">
+    <div class="summary-item">
+      <div class="number ok" id="countFilesOk">0</div>
+      <div>✅ Dateien OK</div>
+    </div>
+    <div class="summary-item">
+      <div class="number missing" id="countFilesMissing">0</div>
+      <div>❌ Fehlen</div>
+    </div>
+    <div class="summary-item">
+      <div class="number ok" id="countNFT">0</div>
+      <div>🏷️ NFT Marker</div>
+    </div>
+    <div class="summary-item">
+      <div class="number ok" id="countQuestions">0</div>
+      <div>📝 Fragen</div>
+    </div>
+  </div>
 
   <!-- BIBLIOTHEKEN STATUS -->
   <div class="card">
-    <h2>📦 Bibliotheken (Datei + Lade-Status)</h2>
-    <div id="libStatus"></div>
+    <h2>📦 Bibliotheken</h2>
+    <table id="libTable">
+      <tr><th>Bibliothek</th><th>Datei</th><th>Status</th><th>Version</th></tr>
+    </table>
+  </div>
+
+  <!-- DATEIEN -->
+  <div class="card">
+    <h2>📁 Datei-Check</h2>
+    <div class="grid" id="fileGrid"></div>
   </div>
 
   <!-- NFT MARKER -->
   <div class="card">
     <h2>🏷️ NFT Marker (assets/nft/)</h2>
-    <div id="nftStatus">Prüfe...</div>
-  </div>
-
-  <!-- DATEIEN -->
-  <div class="card">
-    <h2>📁 Dateien</h2>
-    <div class="grid" id="fileGrid"></div>
+    <div id="nftStatus">⏳ Prüfe NFT Marker...</div>
   </div>
 
   <!-- FRAGEN -->
   <div class="card">
     <h2>📝 Fragen aus data.json</h2>
-    <div id="questionStatus">Lade...</div>
+    <div id="questionStatus">⏳ Lade Fragen...</div>
   </div>
 
   <!-- QR-CODES -->
@@ -62,13 +90,22 @@
   </div>
 
   <script>
+    // Stats
+    const stats = { ok: 0, missing: 0 };
+    
+    function updateStats() {
+      document.getElementById('countFilesOk').textContent = stats.ok;
+      document.getElementById('countFilesMissing').textContent = stats.missing;
+    }
+
     // ==========================================
-    // 1. BIBLIOTHEKEN PRÜFEN
+    // 1. BIBLIOTHEKEN
     // ==========================================
     
     function checkLibraries() {
-      const container = document.getElementById('libStatus');
+      const table = document.getElementById('libTable');
       
+      // Die Dateinamen aus deinem ls -R
       const libs = [
         { 
           name: 'A-Frame', 
@@ -78,18 +115,28 @@
         },
         { 
           name: 'AR.js NFT', 
-          file: 'aframe-ar-nft.js.js',
+          file: 'aframe-ar-nft.js',
           loaded: () => { 
-            try { return typeof AFRAME !== 'undefined' && AFRAME.components && 'nft' in AFRAME.components; } 
-            catch(e) { return false; } 
+            try { 
+              return typeof AFRAME !== 'undefined' && 
+                     AFRAME.components && 
+                     'nft' in AFRAME.components; 
+            } catch(e) { return false; } 
           },
-          version: () => { try { return 'NFT verfügbar'; } catch(e) { return '?'; } }
+          version: () => { 
+            try { 
+              if (typeof AFRAME !== 'undefined' && AFRAME.components && 'nft' in AFRAME.components) {
+                return 'NFT ✅'; 
+              }
+              return 'NFT ❌';
+            } catch(e) { return '?'; } 
+          }
         },
         { 
           name: 'Three.js', 
           file: 'three.min.js.js',
           loaded: () => typeof THREE !== 'undefined',
-          version: () => { try { return THREE.REVISION; } catch(e) { return '?'; } }
+          version: () => { try { return 'r' + THREE.REVISION; } catch(e) { return '?'; } }
         },
         { 
           name: 'jsQR', 
@@ -99,59 +146,24 @@
         }
       ];
       
-      let html = '<table><tr><th>Bibliothek</th><th>Datei</th><th>Geladen?</th><th>Version</th></tr>';
-      
       libs.forEach(lib => {
         const loaded = lib.loaded();
-        html += `<tr>
+        const row = table.insertRow();
+        row.innerHTML = `
           <td><strong>${lib.name}</strong></td>
           <td style="font-family:monospace;">${lib.file}</td>
-          <td class="${loaded ? 'ok' : 'missing'}">${loaded ? '✅ Geladen' : '❌ Nicht geladen'}</td>
+          <td class="${loaded ? 'ok' : 'missing'}">${loaded ? '✅ Geladen' : '❌ Fehlt'}</td>
           <td>${lib.version()}</td>
-        </tr>`;
+        `;
+        
+        if (loaded) stats.ok++; else stats.missing++;
       });
       
-      html += '</table>';
-      container.innerHTML = html;
+      updateStats();
     }
 
     // ==========================================
-    // 2. NFT MARKER PRÜFEN
-    // ==========================================
-    
-    async function checkNFT() {
-      const container = document.getElementById('nftStatus');
-      
-      const files = [
-        { name: 'schaltung.fset',  path: './assets/nft/schaltung.fset' },
-        { name: 'schaltung.fset3', path: './assets/nft/schaltung.fset3' },
-        { name: 'schaltung.iset',  path: './assets/nft/schaltung.iset' }
-      ];
-      
-      let html = '';
-      let allOk = true;
-      
-      for (const f of files) {
-        try {
-          const res = await fetch(f.path, { method: 'HEAD' });
-          if (res.ok) {
-            html += `<span class="badge badge-ok">✅ ${f.name}</span> `;
-          } else {
-            html += `<span class="badge badge-missing">❌ ${f.name}</span> `;
-            allOk = false;
-          }
-        } catch(e) {
-          html += `<span class="badge badge-missing">❌ ${f.name} (kein Zugriff)</span> `;
-          allOk = false;
-        }
-      }
-      
-      html += `<br><br><strong>${allOk ? '✅ NFT Marker komplett (3/3)' : '❌ NFT Marker unvollständig'}</strong>`;
-      container.innerHTML = html;
-    }
-
-    // ==========================================
-    // 3. DATEIEN PRÜFEN (mit fetch)
+    // 2. DATEIEN PRÜFEN
     // ==========================================
     
     async function checkFiles() {
@@ -162,7 +174,7 @@
           title: '📦 Bibliotheken',
           files: [
             { name: 'aframe.min.js', path: './aframe.min.js' },
-            { name: 'aframe-ar-nft.js.js', path: './aframe-ar-nft.js.js' },
+            { name: 'aframe-ar-nft.js', path: './aframe-ar-nft.js' },
             { name: 'three.min.js.js', path: './three.min.js.js' },
             { name: 'jsQR.js', path: './jsQR.js' }
           ]
@@ -179,7 +191,8 @@
             { name: 'scene.gltf', path: './assets/gltf/scene.gltf' },
             { name: 'scene.bin', path: './assets/gltf/scene.bin' },
             { name: 'BaseColor.png', path: './assets/gltf/textures/Material.001_baseColor.png' },
-            { name: 'Normal.png', path: './assets/gltf/textures/Material.001_normal.png' }
+            { name: 'Normal.png', path: './assets/gltf/textures/Material.001_normal.png' },
+            { name: 'Metallic.png', path: './assets/gltf/textures/Material.001_metallicRoughness.png' }
           ]
         },
         {
@@ -188,6 +201,15 @@
             { name: 'schaltung.fset', path: './assets/nft/schaltung.fset' },
             { name: 'schaltung.fset3', path: './assets/nft/schaltung.fset3' },
             { name: 'schaltung.iset', path: './assets/nft/schaltung.iset' }
+          ]
+        },
+        {
+          title: '🏷️ Pattern (.patt)',
+          files: [
+            { name: 'pattern-magnet.patt', path: './assets/patt/pattern-magnet.patt' },
+            { name: 'pattern-optik.patt', path: './assets/patt/pattern-optik.patt' },
+            { name: 'pattern-farbe.patt', path: './assets/patt/pattern-farbe.patt' },
+            { name: 'pattern-parallelschaltung.patt', path: './assets/patt/pattern-parallelschaltung.patt' }
           ]
         },
         {
@@ -208,22 +230,23 @@
         
         for (const file of cat.files) {
           const div = document.createElement('div');
-          div.style.display = 'flex';
-          div.style.alignItems = 'center';
-          div.style.gap = '10px';
-          div.style.padding = '5px 0';
+          div.className = 'file-row';
           
           try {
             const res = await fetch(file.path, { method: 'HEAD' });
             if (res.ok) {
+              stats.ok++;
               div.innerHTML = `<span class="ok">✅</span> <span style="font-family:monospace;flex-grow:1;">${file.name}</span> <span class="badge badge-ok">OK</span>`;
             } else {
+              stats.missing++;
               div.innerHTML = `<span class="missing">❌</span> <span style="font-family:monospace;flex-grow:1;">${file.name}</span> <span class="badge badge-missing">Fehlt</span>`;
             }
           } catch(e) {
+            stats.missing++;
             div.innerHTML = `<span class="missing">❌</span> <span style="font-family:monospace;flex-grow:1;">${file.name}</span> <span class="badge badge-missing">Kein Zugriff</span>`;
           }
           
+          updateStats();
           card.appendChild(div);
         }
         
@@ -232,7 +255,46 @@
     }
 
     // ==========================================
-    // 4. FRAGEN LADEN
+    // 3. NFT MARKER
+    // ==========================================
+    
+    async function checkNFT() {
+      const container = document.getElementById('nftStatus');
+      
+      const files = [
+        { name: 'schaltung.fset', path: './assets/nft/schaltung.fset' },
+        { name: 'schaltung.fset3', path: './assets/nft/schaltung.fset3' },
+        { name: 'schaltung.iset', path: './assets/nft/schaltung.iset' }
+      ];
+      
+      let allOk = true;
+      let html = '';
+      
+      for (const f of files) {
+        try {
+          const res = await fetch(f.path, { method: 'HEAD' });
+          if (res.ok) {
+            html += `✅ ${f.name} `;
+          } else {
+            html += `❌ ${f.name} `;
+            allOk = false;
+          }
+        } catch(e) {
+          html += `❌ ${f.name} (kein Zugriff) `;
+          allOk = false;
+        }
+      }
+      
+      html += `<br><br><span class="${allOk ? 'ok' : 'missing'}">
+        <strong>${allOk ? '✅ NFT Marker komplett' : '❌ NFT Marker unvollständig'}</strong>
+      </span>`;
+      
+      container.innerHTML = html;
+      document.getElementById('countNFT').textContent = allOk ? 3 : files.filter((_,i) => html.includes(`✅ ${files[i]?.name}`)).length;
+    }
+
+    // ==========================================
+    // 4. FRAGEN
     // ==========================================
     
     async function loadQuestions() {
@@ -247,19 +309,22 @@
           return;
         }
         
-        let html = `<p>✅ ${data.targets.length} Targets gefunden</p>`;
+        let totalQuestions = 0;
+        let html = `<p class="ok">✅ ${data.targets.length} Targets gefunden</p>`;
         
         data.targets.forEach(target => {
+          const qCount = target.questions ? target.questions.length : 0;
+          totalQuestions += qCount;
+          
           html += `
             <div style="margin:10px 0;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;">
-              <strong>${target.icon || '📍'} ${target.name}</strong> - ${target.questions ? target.questions.length : 0} Fragen
+              <strong>${target.icon || '📍'} ${target.name}</strong> - ${qCount} Fragen
               <table>
-                <tr><th>#</th><th>Frage</th><th>Antworten</th><th>Richtig</th><th>Tipp</th></tr>
+                <tr><th>#</th><th>Frage</th><th>Richtig</th><th>Tipp</th></tr>
                 ${(target.questions || []).map((q, i) => `
                   <tr>
                     <td>${i+1}</td>
-                    <td>${q.question.substring(0, 35)}...</td>
-                    <td>${q.answers.length}</td>
+                    <td>${q.question.substring(0, 40)}...</td>
                     <td class="ok">${q.answers[q.correct]}</td>
                     <td style="color:#ffa726;">${q.hint || '-'}</td>
                   </tr>
@@ -269,13 +334,14 @@
         });
         
         container.innerHTML = html;
+        document.getElementById('countQuestions').textContent = totalQuestions;
       } catch(e) {
         container.innerHTML = `<p class="missing">❌ Fehler: ${e.message}</p>`;
       }
     }
 
     // ==========================================
-    // 5. QR-CODES ANZEIGEN
+    // 5. QR-CODES
     // ==========================================
     
     function showQRCodes() {
@@ -287,7 +353,9 @@
         card.className = 'card';
         card.innerHTML = `
           <h3>Target ${i}: ${names[i]}</h3>
-          <img src="./qr_codes/target_${i}.png" onerror="this.outerHTML='<p class=\\'missing\\'>❌ QR-Code target_${i}.png fehlt</p>'">
+          <img src="./qr_codes/target_${i}.png" 
+               onerror="this.outerHTML='<p class=\\'missing\\'>❌ QR-Code target_${i}.png fehlt</p>'"
+               style="max-width:180px;border-radius:10px;">
           <p style="color:#aaa;font-size:0.8em;">qr_codes/target_${i}.png</p>
         `;
         grid.appendChild(card);
@@ -299,7 +367,7 @@
     // ==========================================
     
     document.addEventListener('DOMContentLoaded', () => {
-      // Wichtig: Kurze Verzögerung, damit Bibliotheken geladen sind
+      // Warte, bis Bibliotheken geladen sind
       setTimeout(() => {
         checkLibraries();
         checkNFT();

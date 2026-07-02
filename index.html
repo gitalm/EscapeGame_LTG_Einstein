@@ -6,17 +6,14 @@
   <title>Physik Escape - Einstein Lab</title>
   
   <!-- A-Frame Basis -->
-  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  
+  <script src="./aframe.min.js"></script>
   <!-- AR.js mit NFT (Image Tracking) Support -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-  
+  <script src="./aframe-ar-nft.js"></script>
   <!-- jsQR für QR-Code Scannen -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
+  <script src="./jsQR.js"></script>
+  
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #000;
@@ -25,296 +22,139 @@
       height: 100vh;
       width: 100vw;
     }
-    
-    /* AR-Szene - Hintergrund */
-    #arContainer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-    }
-    
-    /* UI Layer - immer im Vordergrund */
-    #ui {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 100;
-      pointer-events: none;
-    }
-    
-    #ui > * {
-      pointer-events: auto;
-    }
+    #arContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    #ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; pointer-events: none; }
+    #ui > * { pointer-events: auto; }
     
     /* Start Overlay */
     #startOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: linear-gradient(135deg, #0a0a23, #1a1a4e, #0d0d3d);
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      color: white;
-      padding: 20px;
+      z-index: 10000; display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center; color: white; padding: 20px;
     }
-    
     #startOverlay .logo { font-size: 4em; margin-bottom: 10px; }
     #startOverlay h1 { font-size: 2em; color: #4fc3f7; margin-bottom: 5px; }
     #startOverlay .subtitle { color: #ffd54f; font-size: 1em; }
     #startOverlay .story {
-      background: rgba(255,255,255,0.08);
-      padding: 15px;
-      border-radius: 15px;
-      max-width: 380px;
-      margin: 15px auto;
-      font-size: 0.9em;
-      line-height: 1.5;
-      color: #ddd;
+      background: rgba(255,255,255,0.08); padding: 15px;
+      border-radius: 15px; max-width: 380px; margin: 15px auto;
+      font-size: 0.9em; line-height: 1.5; color: #ddd;
       border-left: 3px solid #4fc3f7;
     }
-    
     #startBtn {
-      background: #4fc3f7;
-      color: #000;
-      border: none;
-      padding: 16px 45px;
-      border-radius: 50px;
-      font-size: 1.2em;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 15px;
+      background: #4fc3f7; color: #000; border: none;
+      padding: 16px 45px; border-radius: 50px;
+      font-size: 1.2em; font-weight: bold; cursor: pointer; margin-top: 15px;
       transition: transform 0.2s;
     }
     #startBtn:hover { transform: scale(1.05); }
     
-    /* Fortschritt */
     #progress {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      background: rgba(0,0,0,0.8);
-      padding: 8px 16px;
-      border-radius: 25px;
-      font-size: 0.8em;
-      border: 1px solid #4fc3f7;
-      display: none;
+      position: absolute; top: 15px; left: 15px;
+      background: rgba(0,0,0,0.8); padding: 8px 16px;
+      border-radius: 25px; font-size: 0.8em;
+      border: 1px solid #4fc3f7; display: none;
     }
-    
-    /* Hinweis-Text */
     #hint {
-      position: absolute;
-      bottom: 80px;
-      left: 50%;
+      position: absolute; bottom: 80px; left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.85);
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      border: 1px solid #4fc3f7;
-      display: none;
-      text-align: center;
-      max-width: 90%;
+      background: rgba(0,0,0,0.85); padding: 8px 20px;
+      border-radius: 20px; font-size: 0.85em;
+      border: 1px solid #4fc3f7; display: none;
+      text-align: center; max-width: 90%;
     }
     
-    /* Sprachblase für Fragen */
+    /* Sprachblase */
     #bubble {
-      position: absolute;
-      bottom: 20px;
-      left: 5%;
-      width: 90%;
-      max-height: 50vh;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.92);
-      border: 2px solid #4fc3f7;
-      border-radius: 20px;
-      padding: 20px;
-      display: none;
-      text-align: center;
+      position: absolute; bottom: 20px; left: 5%; width: 90%;
+      max-height: 50vh; overflow-y: auto;
+      background: rgba(0,0,0,0.92); border: 2px solid #4fc3f7;
+      border-radius: 20px; padding: 20px; display: none; text-align: center;
     }
-    
     #bubble .badge {
-      display: inline-block;
-      background: #4fc3f7;
-      color: #000;
-      padding: 3px 12px;
-      border-radius: 15px;
-      font-size: 0.75em;
-      font-weight: bold;
-      margin-bottom: 8px;
+      display: inline-block; background: #4fc3f7; color: #000;
+      padding: 3px 12px; border-radius: 15px;
+      font-size: 0.75em; font-weight: bold; margin-bottom: 8px;
     }
-    
     #bubble h2 { color: #ffd54f; margin: 5px 0; font-size: 1.1em; }
     #bubble p { margin: 10px 0; line-height: 1.4; font-size: 0.95em; }
     #bubble .dots { margin: 8px 0; }
     #bubble .dots span {
-      display: inline-block;
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      margin: 0 3px;
-      background: #555;
+      display: inline-block; width: 10px; height: 10px;
+      border-radius: 50%; margin: 0 3px; background: #555;
     }
     #bubble .dots span.active { background: #4fc3f7; }
     #bubble .dots span.done { background: #66bb6a; }
     
     .answer-btn {
-      background: #4fc3f7;
-      color: #000;
-      border: none;
-      padding: 10px 18px;
-      margin: 4px;
-      border-radius: 10px;
-      font-size: 0.9em;
-      font-weight: bold;
-      cursor: pointer;
-      min-width: 80px;
-      transition: all 0.15s;
+      background: #4fc3f7; color: #000; border: none;
+      padding: 10px 18px; margin: 4px; border-radius: 10px;
+      font-size: 0.9em; font-weight: bold; cursor: pointer;
+      min-width: 80px; transition: all 0.15s;
     }
-    .answer-btn:hover { background: #29b6f6; transform: scale(1.02); }
+    .answer-btn:hover { background: #29b6f6; }
     .answer-btn.correct { background: #66bb6a; }
     .answer-btn.wrong { background: #ef5350; }
-    .answer-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .answer-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     
-    /* Zwischen-Hinweis */
     #hintOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.92);
-      z-index: 5000;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      color: white;
-      padding: 25px;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); z-index: 5000;
+      display: none; justify-content: center; align-items: center;
+      text-align: center; color: white; padding: 25px;
     }
-    
     #hintOverlay .box {
       background: rgba(255,255,255,0.05);
-      border: 2px solid #4fc3f7;
-      border-radius: 20px;
-      padding: 25px;
-      max-width: 380px;
-      width: 100%;
+      border: 2px solid #4fc3f7; border-radius: 20px;
+      padding: 25px; max-width: 380px; width: 100%;
     }
-    
     #hintOverlay .icon { font-size: 2.5em; }
-    #hintOverlay h2 { color: #4fc3f7; margin: 8px 0; font-size: 1.2em; }
-    #hintOverlay p { color: #ddd; line-height: 1.6; margin: 8px 0; font-size: 0.95em; white-space: pre-line; }
+    #hintOverlay h2 { color: #4fc3f7; margin: 8px 0; }
+    #hintOverlay p { color: #ddd; line-height: 1.6; margin: 8px 0; white-space: pre-line; }
     #hintOverlay .next-btn {
       background: #ffd54f; color: #000; border: none;
       padding: 12px 35px; border-radius: 30px;
       font-size: 1em; font-weight: bold; cursor: pointer; margin-top: 12px;
     }
     
-    /* Gewinn-Bildschirm */
     #winScreen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 9999;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      text-align: center;
-      color: white;
-      padding: 20px;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95); z-index: 9999;
+      display: none; justify-content: center; align-items: center;
+      flex-direction: column; text-align: center; color: white; padding: 20px;
     }
-    
     #winScreen .icon { font-size: 4em; }
     #winScreen h1 { font-size: 2.2em; color: #ffd54f; margin: 10px 0; }
-    #winScreen .sub { font-size: 1.1em; color: #4fc3f7; margin: 8px 0; }
-    #winScreen .stats {
-      background: rgba(255,255,255,0.1);
-      padding: 15px;
-      border-radius: 15px;
-      margin: 15px 0;
-    }
+    #winScreen .sub { font-size: 1.1em; color: #4fc3f7; }
+    #winScreen .stats { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; margin: 15px 0; }
     #winScreen .restart-btn {
       background: #4fc3f7; color: #000; border: none;
       padding: 14px 40px; border-radius: 30px;
       font-size: 1.2em; cursor: pointer; font-weight: bold; margin-top: 20px;
     }
     
-    /* Scan-Frame für QR */
     #scanFrame {
-      position: fixed;
-      top: 50%;
-      left: 50%;
+      position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 250px;
-      height: 250px;
-      border: 3px dashed #4fc3f7;
-      border-radius: 20px;
-      z-index: 50;
-      pointer-events: none;
-      display: none;
+      width: 250px; height: 250px;
+      border: 3px dashed #4fc3f7; border-radius: 20px;
+      z-index: 50; pointer-events: none; display: none;
       box-shadow: 0 0 30px rgba(79,195,247,0.2);
     }
     #scanFrame .label {
-      position: absolute;
-      bottom: -40px;
-      left: 50%;
+      position: absolute; bottom: -40px; left: 50%;
       transform: translateX(-50%);
-      color: #4fc3f7;
-      font-size: 0.8em;
-      white-space: nowrap;
-      background: rgba(0,0,0,0.7);
-      padding: 5px 15px;
-      border-radius: 10px;
+      color: #4fc3f7; font-size: 0.8em; white-space: nowrap;
+      background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 10px;
     }
-    #scanFrame .corner {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-color: #4fc3f7;
-      border-style: solid;
-    }
-    #scanFrame .corner.tl { top: -3px; left: -3px; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
-    #scanFrame .corner.tr { top: -3px; right: -3px; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
-    #scanFrame .corner.bl { bottom: -3px; left: -3px; border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
-    #scanFrame .corner.br { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
     
-    @keyframes pulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
-    }
+    #qrContainer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 1; }
+    #qrContainer video, #qrContainer canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    
+    @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     .pulse { animation: pulse 1.5s infinite; }
-    
-    /* QR Container */
-    #qrContainer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: none;
-      z-index: 1;
-    }
-    #qrContainer video, #qrContainer canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-    }
   </style>
 </head>
 <body>
@@ -328,8 +168,8 @@
       <strong>📖 Story:</strong><br>
       Professor Einstein hat im Schulhaus<br>
       <strong>4 Experimente versteckt</strong>!<br><br>
-      1️⃣ Scanne deine Schaltung (NFT-Marker)<br>
-      2️⃣ Oder QR-Codes auf den Arbeitsblättern<br>
+      1️⃣ Scanne deine Schaltung (NFT-Bild)<br>
+      2️⃣ Scanne QR-Codes auf Arbeitsblättern<br>
       3️⃣ Beantworte die Physik-Fragen<br>
       4️⃣ Schalte den Strom wieder ein! ⚡
     </div>
@@ -349,7 +189,7 @@
         
         <!-- Sprechblase über Einstein -->
         <a-plane position="0 0.8 0" width="0.6" height="0.3" color="#000" opacity="0.85" material="transparent: true;" side="double">
-          <a-text value="🧑‍🔬 Gut gemacht! Klicke mich!" position="0 0 0.01" align="center" width="0.55" color="#4fc3f7" font-size="0.04"></a-text>
+          <a-text value="🧑‍🔬 Klicke mich!" position="0 0 0.01" align="center" width="0.55" color="#4fc3f7" font-size="0.04"></a-text>
         </a-plane>
         
         <!-- Unsichtbare Klick-Fläche -->
@@ -357,7 +197,6 @@
         
       </a-nft>
       
-      <!-- Kamera -->
       <a-entity camera></a-entity>
       
     </a-scene>
@@ -371,19 +210,13 @@
 
   <!-- SCAN FRAME -->
   <div id="scanFrame">
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
     <div class="label pulse">📷 QR-Code scannen</div>
   </div>
 
   <!-- UI LAYER -->
   <div id="ui">
-    
     <div id="progress">📍 0/4 • ✅ 0/16</div>
-    
-    <div id="hint">📸 Scanne deine Schaltung oder einen QR-Code!</div>
+    <div id="hint">📸 Scanne deine Schaltung!</div>
     
     <!-- Sprachblase -->
     <div id="bubble">
@@ -411,18 +244,16 @@
       <h1>LABOR GERETTET! 🎉</h1>
       <div class="sub">🧑‍🔬 „Hervorragend, junge Physiker!“</div>
       <div class="stats">
-        <p>📍 <span id="winTargets">0</span>/4 Experimente gefunden</p>
+        <p>📍 <span id="winTargets">0</span>/4 Experimente</p>
         <p>✅ <span id="winCorrect">0</span> / <span id="winTotal">16</span> richtig</p>
-        <p>⏱️ <span id="winTime">0</span> Minuten</p>
       </div>
       <button class="restart-btn" onclick="location.reload()">🔄 Nochmal spielen</button>
     </div>
-    
   </div>
 
   <script>
     // ==========================================
-    //  SPIELDATEN (Aus data.json)
+    //  SPIELDATEN
     // ==========================================
     
     const gameData = {
@@ -485,10 +316,10 @@
       hintShowing: false,
       activeMode: null,
       scanning: false,
-      einsteinFound: false
+      einsteinFound: false,
+      arActive: true
     };
 
-    // DOM
     const startOverlay = document.getElementById('startOverlay');
     const startBtn = document.getElementById('startBtn');
     const arContainer = document.getElementById('arContainer');
@@ -514,7 +345,6 @@
     const winTargets = document.getElementById('winTargets');
     const winCorrect = document.getElementById('winCorrect');
     const winTotal = document.getElementById('winTotal');
-    const winTime = document.getElementById('winTime');
 
     // ==========================================
     //  START
@@ -526,10 +356,9 @@
       progress.style.display = 'block';
       hint.style.display = 'block';
       state.startTime = Date.now();
+      hint.textContent = '📸 Scanne deine Schaltung!';
       
-      hint.textContent = '📸 Scanne deine Schaltung (NFT-Marker) oder einen QR-Code!';
-      
-      // Einstein Klick-Event (wenn NFT erkannt wird)
+      // Einstein Klick-Event
       setTimeout(() => {
         const clickEl = document.getElementById('einstein-click');
         if (clickEl) {
@@ -560,6 +389,8 @@
       state.activeMode = 'qr';
       state.scanning = true;
       
+      // AR ausblenden, QR anzeigen
+      arContainer.style.display = 'none';
       qrContainer.style.display = 'block';
       scanFrame.style.display = 'block';
       hint.textContent = '📱 Scanne einen QR-Code!';
@@ -593,7 +424,6 @@
           const code = jsQR(imageData.data, 640, 480);
           
           if (code && code.data) {
-            // Finde Target mit dieser QR-Daten
             const target = gameData.targets.find(t => t.qrData === code.data);
             if (target && !state.solvedTargets.has(target.id) && !state.questionActive && !state.hintShowing) {
               if (navigator.vibrate) navigator.vibrate(200);
@@ -619,7 +449,6 @@
       state.currentQuestion = 0;
       state.scanning = false;
       
-      // Kamera stoppen
       if (qrVideo.srcObject) {
         qrVideo.srcObject.getTracks().forEach(t => t.stop());
       }
@@ -636,12 +465,10 @@
     }
 
     hintBtn.addEventListener('click', () => {
-      if (hintBtn.textContent.includes('Weiter') || hintBtn.textContent.includes('scannen')) {
-        // Weiter scannen
+      if (hintBtn.textContent.includes('Weiter')) {
         hintOverlay.style.display = 'none';
         state.hintShowing = false;
         state.scanning = true;
-        
         qrContainer.style.display = 'block';
         scanFrame.style.display = 'block';
         hint.textContent = '📱 Scanne den nächsten QR-Code!';
@@ -674,7 +501,6 @@
       bubbleTitle.textContent = target.icon + ' ' + target.name;
       bubbleText.textContent = q.question;
       
-      // Fortschritts-Dots
       bubbleDots.innerHTML = '';
       target.questions.forEach((_, idx) => {
         const dot = document.createElement('span');
@@ -684,7 +510,6 @@
         bubbleDots.appendChild(dot);
       });
       
-      // Antwort-Buttons
       bubbleButtons.innerHTML = '';
       q.answers.forEach((answer, i) => {
         const btn = document.createElement('button');
@@ -731,7 +556,6 @@
       } else {
         btn.classList.add('wrong');
         bubbleText.textContent = "❌ " + q.hint + "\n\n🧑‍🔬 „Versuche es nochmal!“";
-        
         if (navigator.vibrate) navigator.vibrate(300);
         
         setTimeout(() => {
@@ -752,7 +576,6 @@
         return;
       }
       
-      // Nächstes Target
       hintIcon.textContent = '🎯';
       hintTitle.textContent = `✅ ${gameData.targets[targetId].name} geschafft!`;
       hintText.textContent = `🧑‍🔬 „Großartig! Finde den nächsten QR-Code!“`;
@@ -766,11 +589,9 @@
     }
 
     function showWinScreen() {
-      const minutes = Math.floor((Date.now() - state.startTime) / 60000);
       winTargets.textContent = state.solvedTargets.size;
       winCorrect.textContent = state.correctAnswers;
       winTotal.textContent = state.totalQuestions;
-      winTime.textContent = minutes;
       
       bubble.style.display = 'none';
       hintOverlay.style.display = 'none';
@@ -801,7 +622,6 @@
     document.head.appendChild(style);
 
     console.log('🔬 Physik Escape gestartet!');
-    console.log(`📍 ${gameData.targets.length} Targets, 📝 ${state.totalQuestions} Fragen`);
   </script>
 </body>
 </html>
